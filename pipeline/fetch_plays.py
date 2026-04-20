@@ -276,112 +276,162 @@ def fetch_spotify_all(existing_sp: dict) -> tuple[dict, bool]:
     """
     Fetch Spotify data. Returns (sp_data_dict, got_data).
 
-    The public API only returns popularity (0-100), not raw stream counts.
-    total_streams and monthly_listeners come from manual entry (Spotify for Artists)
-    and are ALWAYS preserved — never overwritten by the API.
+    If SPOTIFY_REFRESH_TOKEN is set, uses the user-scoped Authorization Code
+    flow (PKCE) to fetch top tracks and recently played with real data.
+    Otherwise falls back to Client Credentials (public popularity scores only).
     """
     print("\n--- Spotify ---")
 
+    # ── Try user-scoped auth first (PKCE refresh token) ──
+    refresh_token = os.environ.get("SPOTIFY_REFRESH_TOKEN")
+    client_id = os.environ.get("SPOTIFY_CLIENT_ID")
+
+    user_data_fetched = False
+    top_tracks_short = []
+    top_tracks_medium = []
+    top_tracks_long = []
+    recently_played = []
+
+    if refresh_token and client_id:
+        try:
+            from spotify_auth import refresh_access_token
+            from spotify_client import SpotifyClient
+
+            tokens = refresh_access_token(client_id, refresh_token)
+            client = SpotifyClient(tokens["access_token"], client_id, refresh_token)
+
+            user = client.get_current_user()
+            print(f"  Authenticated as: {user.get('display_name', 'unknown')} ({user.get('product', 'free')})")
+
+            top_tracks_short = [
+                {"name": t["name"], "popularity": t.get("popularity", 0)}
+                for t in client.get_top_tracks("short_term", 50)
+            ]
+            top_tracks_medium = [
+                {"name": t["name"], "popularity": t.get("popularity", 0)}
+                for t in client.get_top_tracks("medium_term", 50)
+            ]
+            top_tracks_long = [
+                {"name": t["name"], "popularity": t.get("popularity", 0)}
+                for t in client.get_top_tracks("long_term", 50)
+            ]
+            recently_played = [
+                {"name": t["track"]["name"], "played_at": t["played_at"]}
+                for t in client.get_recently_played(50)
+            ]
+
+            print(f"  User data: {len(top_tracks_short)} short-term, {len(top_tracks_medium)} medium-term, {len(top_tracks_long)} long-term top tracks")
+            print(f"  Recently played: {len(recently_played)} tracks")
+            user_data_fetched = True
+
+        except Exception as e:
+            print(f"  User auth failed ({e}), falling back to public API", file=sys.stderr)
+
+    # ── Public API: catalog + popularity scores ──
     token = _get_spotify_token()
-    if not token:
+    if not token and not user_data_fetched:
         print("  ERROR: No Spotify token", file=sys.stderr)
         sp_data = dict(existing_sp) if existing_sp else {}
         sp_data["fetch_status"] = "failed"
         return sp_data, False
 
-    api_headers = {"Authorization": f"Bearer {token}"}
     fetched_tracks = {}
+    if token:
+        api_headers = {"Authorization": f"Bearer {token}"}
 
-    try:
-        # Get all albums
-        album_ids = set()
-        for group in ["album", "single", "appears_on", "compilation"]:
-            offset = 0
-            while True:
+        try:
+            album_ids = set()
+            for group in ["album", "single", "appears_on", "compilation"]:
+                offset = 0
+                while True:
+                    resp = requests.get(
+                        f"https://api.spotify.com/v1/artists/{SPOTIFY_ARTIST_ID}/albums",
+                        headers=api_headers,
+                        params={"include_groups": group, "market": "US", "limit": 50, "offset": offset},
+                        timeout=30,
+                    )
+                    if resp.status_code != 200:
+                        break
+                    data = resp.json()
+                    for album in data.get("items", []):
+                        album_ids.add(album["id"])
+                    if not data.get("next"):
+                        break
+                    offset += 50
+
+            print(f"  Found {len(album_ids)} albums/singles")
+
+            track_ids = set()
+            album_list = list(album_ids)
+            for i in range(0, len(album_list), 20):
+                batch = album_list[i:i+20]
                 resp = requests.get(
-                    f"https://api.spotify.com/v1/artists/{SPOTIFY_ARTIST_ID}/albums",
+                    "https://api.spotify.com/v1/albums",
                     headers=api_headers,
-                    params={"include_groups": group, "market": "US", "limit": 50, "offset": offset},
-                    timeout=30,
+                    params={"ids": ",".join(batch), "market": "US"}, timeout=30,
                 )
-                if resp.status_code != 200:
-                    break
-                data = resp.json()
-                for album in data.get("items", []):
-                    album_ids.add(album["id"])
-                if not data.get("next"):
-                    break
-                offset += 50
+                if resp.status_code == 200:
+                    for album in resp.json().get("albums", []):
+                        if not album:
+                            continue
+                        for track in album.get("tracks", {}).get("items", []):
+                            if SPOTIFY_ARTIST_ID in [a["id"] for a in track.get("artists", [])]:
+                                track_ids.add(track["id"])
 
-        print(f"  Found {len(album_ids)} albums/singles")
+            print(f"  Found {len(track_ids)} tracks by Poolpat")
 
-        # Get tracks from albums
-        track_ids = set()
-        album_list = list(album_ids)
-        for i in range(0, len(album_list), 20):
-            batch = album_list[i:i+20]
-            resp = requests.get(
-                "https://api.spotify.com/v1/albums",
-                headers=api_headers,
-                params={"ids": ",".join(batch), "market": "US"}, timeout=30,
-            )
-            if resp.status_code == 200:
-                for album in resp.json().get("albums", []):
-                    if not album:
-                        continue
-                    for track in album.get("tracks", {}).get("items", []):
-                        if SPOTIFY_ARTIST_ID in [a["id"] for a in track.get("artists", [])]:
-                            track_ids.add(track["id"])
+            for i in range(0, len(list(track_ids)), 50):
+                batch = list(track_ids)[i:i+50]
+                resp = requests.get(
+                    "https://api.spotify.com/v1/tracks",
+                    headers=api_headers,
+                    params={"ids": ",".join(batch), "market": "US"}, timeout=30,
+                )
+                if resp.status_code == 200:
+                    for track in resp.json().get("tracks", []):
+                        if track:
+                            fetched_tracks[track["name"]] = track.get("popularity", 0)
 
-        print(f"  Found {len(track_ids)} tracks by Poolpat")
+        except Exception as e:
+            print(f"  Spotify catalog error: {e}", file=sys.stderr)
 
-        # Get track details
-        for i in range(0, len(list(track_ids)), 50):
-            batch = list(track_ids)[i:i+50]
-            resp = requests.get(
-                "https://api.spotify.com/v1/tracks",
-                headers=api_headers,
-                params={"ids": ",".join(batch), "market": "US"}, timeout=30,
-            )
-            if resp.status_code == 200:
-                for track in resp.json().get("tracks", []):
-                    if track:
-                        fetched_tracks[track["name"]] = track.get("popularity", 0)
+    got_data = len(fetched_tracks) > 0 or user_data_fetched
 
-    except Exception as e:
-        print(f"  Spotify error: {e}", file=sys.stderr)
-
-    got_data = len(fetched_tracks) > 0
-
-    # Preserve manually-entered data that the public API can't provide
     existing_total_streams = existing_sp.get("total_streams", 0) or 0
     existing_monthly = existing_sp.get("monthly_listeners")
     existing_streams_28d = existing_sp.get("streams_28d")
     existing_source = existing_sp.get("source", "")
 
     if got_data:
-        # Merge tracks monotonically (popularity can fluctuate, but we keep max)
         existing_tracks = existing_sp.get("tracks", {})
-        merged = monotonic_merge_tracks(existing_tracks, fetched_tracks)
+        merged = monotonic_merge_tracks(existing_tracks, fetched_tracks) if fetched_tracks else dict(existing_tracks)
 
         sp_data = {
             "url": f"https://open.spotify.com/artist/{SPOTIFY_ARTIST_ID}",
             "artist_id": SPOTIFY_ARTIST_ID,
             "source": existing_source if existing_source else "Spotify API (popularity 0-100)",
             "tracks": merged,
-            "total_streams": existing_total_streams,  # ALWAYS preserve manual entry
+            "total_streams": existing_total_streams,
             "total_tracks": max(int(existing_sp.get("total_tracks", 0) or 0), len(merged), 21),
-            "monthly_listeners": existing_monthly,      # ALWAYS preserve
-            "streams_28d": existing_streams_28d,         # ALWAYS preserve
+            "monthly_listeners": existing_monthly,
+            "streams_28d": existing_streams_28d,
             "fetch_status": "success",
             "last_successful_fetch": datetime.now(timezone.utc).isoformat(),
+            "auth_method": "user_token" if user_data_fetched else "client_credentials",
             "note": "total_streams/monthly_listeners from Spotify for Artists (manual). Track values are popularity scores.",
         }
+
+        if user_data_fetched:
+            sp_data["top_tracks_short"] = top_tracks_short
+            sp_data["top_tracks_medium"] = top_tracks_medium
+            sp_data["top_tracks_long"] = top_tracks_long
+            sp_data["recently_played"] = recently_played
+
     else:
         sp_data = dict(existing_sp) if existing_sp else {}
         sp_data["fetch_status"] = "failed"
 
-    print(f"  Result: {len(fetched_tracks)} tracks fetched, total_streams={existing_total_streams:,} (preserved)")
+    print(f"  Result: {len(fetched_tracks)} catalog tracks, total_streams={existing_total_streams:,} (preserved), user_data={'yes' if user_data_fetched else 'no'}")
     return sp_data, got_data
 
 
