@@ -143,10 +143,22 @@ def _run_local_auth(client_id: str, redirect_uri: str, scopes: str) -> str:
     print(f"If the browser doesn't open, visit:\n  {auth_url}\n")
     webbrowser.open(auth_url)
 
-    server = HTTPServer(("localhost", port), CallbackHandler)
-    server.timeout = 120
-    server.handle_request()
-    server.server_close()
+    # Try local callback server first; fall back to manual paste
+    try:
+        server = HTTPServer(("localhost", port), CallbackHandler)
+        server.timeout = 120
+        server.handle_request()
+        server.server_close()
+    except OSError:
+        print(f"Could not start local server on port {port}.")
+        print("After authorizing in the browser, paste the full callback URL here.")
+        print("It will look like: http://localhost:8888/callback?code=AQD...\n")
+        callback_url = input("Callback URL: ").strip()
+        query = urllib.parse.urlparse(callback_url).query
+        params = urllib.parse.parse_qs(query)
+        code = params.get("code", [None])[0]
+        if code:
+            received_code.append(code)
 
     if not received_code:
         print("No authorization code received. Timed out or denied.", file=sys.stderr)
