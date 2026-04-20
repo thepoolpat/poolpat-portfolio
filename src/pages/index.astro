@@ -1,0 +1,159 @@
+---
+import Base from "@/layouts/Base.astro";
+import ListenButton from "@/components/ListenButton.astro";
+import ChartBadge from "@/components/ChartBadge.astro";
+import StatCard from "@/components/StatCard.astro";
+import EmbeddedPlayer from "@/components/EmbeddedPlayer.astro";
+import releases from "@/data/releases.json";
+import playsRaw from "@data/plays.json";
+
+const data = playsRaw as any;
+const base = import.meta.env.BASE_URL;
+const art = (r: any) => `${base}${r.artwork}`;
+const scTotal = data.soundcloud?.total_plays_all_platforms || data.soundcloud?.total_plays || 0;
+const spTotal = data.spotify?.total_streams || 0;
+const amTotal = data.apple_music?.total_plays || 0;
+const grandTotal = scTotal + spTotal + amTotal;
+const scFollowers = data.soundcloud?.followers || 0;
+---
+<Base title="Poolpat — Cork Hip-Hop" description="Poolpat — Cork hip-hop artist. Live play stats, full discography, and liner notes across SoundCloud, Spotify, and Apple Music.">
+
+  <!-- Hero Carousel -->
+  <section class="hero" role="region" aria-roledescription="carousel" aria-label="Featured releases">
+    <div class="hero-stage" id="hero-stage">
+      {releases.map((r, i) => (
+        <div class={`hero-slide${i === 0 ? " active" : ""}`} data-idx={i}>
+          <div class="artwork">
+            <img src={art(r)} alt={`${r.title} cover artwork`} loading={i === 0 ? "eager" : "lazy"} decoding="async" />
+          </div>
+          <h1>{r.title}</h1>
+          <p class="tagline">{r.tagline}</p>
+          <div class="meta">
+            <span class="badge-type">{r.typeLabel}</span>
+            {r.meta?.map((m) => <span>{m}</span>)}
+            {r.charts?.map((c) => <ChartBadge position={c} />)}
+          </div>
+          <ListenButton
+            storefront={r.storefront}
+            type={r.type as "album"}
+            slug={r.slug}
+            id={r.id}
+            campaign={`web-portfolio-${r.slug}-hero`}
+          />
+        </div>
+      ))}
+    </div>
+    <div class="hero-controls">
+      <button class="nav-btn" id="prev-btn" aria-label="Previous release">&lsaquo;</button>
+      <div class="hero-dots" id="hero-dots">
+        {releases.map((r, i) => (
+          <button class={`dot${i === 0 ? " active" : ""}`} data-idx={i} aria-label={`Show ${r.title}`} title={r.title}></button>
+        ))}
+      </div>
+      <button class="nav-btn" id="next-btn" aria-label="Next release">&rsaquo;</button>
+    </div>
+    <div class="rotation-status" id="rotation-status" aria-live="polite">Auto-rotating</div>
+  </section>
+
+  <!-- Quick Stats -->
+  <section class="section">
+    <h2>Live Stats</h2>
+    <div class="stats-grid">
+      <StatCard label="Total Plays" value={grandTotal} sub="All platforms" />
+      <StatCard label="SoundCloud" value={scTotal} color="var(--accent-sc)" />
+      <StatCard label="Spotify" value={spTotal} color="var(--accent-sp)" />
+      <StatCard label="Apple Music" value={amTotal} color="var(--accent-am)" />
+    </div>
+    <p class="muted" style="text-align:center;margin-top:.5rem">
+      <a href={`${import.meta.env.BASE_URL}stats/`}>Full stats dashboard &rarr;</a>
+    </p>
+  </section>
+
+  <!-- Discography Preview -->
+  <section class="section">
+    <h2>Discography</h2>
+    <div class="releases">
+      {releases.slice(0, 4).map((r) => (
+        <a class="release-card" href={`${import.meta.env.BASE_URL}releases/${r.slug}/`}>
+          {r.isCollab && <span class="badge">Collab</span>}
+          {r.charts?.length && <span class="badge" style="left:.6rem;right:auto;background:rgba(250,35,59,.85)">Charted</span>}
+          <div class="cover" style={`background-image:url('${art(r)}')`}></div>
+          <div class="info">
+            <span class="title">{r.title}</span>
+            <span class="date">{r.typeLabel}</span>
+          </div>
+        </a>
+      ))}
+    </div>
+    <p class="muted" style="text-align:center;margin-top:.5rem">
+      <a href={`${import.meta.env.BASE_URL}discography/`}>View full discography &rarr;</a>
+    </p>
+  </section>
+
+  <!-- Listen Links -->
+  <section class="section">
+    <h2>Listen</h2>
+    <nav class="nav-links" style="justify-content:center">
+      <a class="nav-link" href="https://soundcloud.com/poolpat" target="_blank" rel="noopener" style="border-color:var(--accent-sc)">SoundCloud</a>
+      <a class="nav-link" href="https://open.spotify.com/artist/4rr3o9anpUXitNXo0W4uX7" target="_blank" rel="noopener" style="border-color:var(--accent-sp)">Spotify</a>
+      <a class="nav-link" href="https://music.apple.com/ie/artist/poolpat/1716939831?at=1000l3chz&app=music&ct=web-portfolio-listen-am" target="_blank" rel="noopener" style="border-color:var(--accent-am)">Apple Music</a>
+      <a class="nav-link" href="https://ffm.bio/poolpat" target="_blank" rel="noopener">FFM.bio</a>
+    </nav>
+  </section>
+
+  <!-- Navigation -->
+  <nav class="nav-links" aria-label="Site navigation">
+    <a class="nav-link" href={`${import.meta.env.BASE_URL}stats/`}>Play Stats</a>
+    <a class="nav-link" href={`${import.meta.env.BASE_URL}discography/`}>Full Discography</a>
+    <a class="nav-link" href="https://ffm.bio/poolpat" target="_blank" rel="noopener">FFM.bio</a>
+  </nav>
+
+  <!-- Carousel Script -->
+  <script>
+    const slides = document.querySelectorAll<HTMLElement>(".hero-slide");
+    const dots = document.querySelectorAll<HTMLElement>(".dot");
+    const status = document.getElementById("rotation-status")!;
+    const ROTATE_MS = 8000;
+    let current = 0;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    let paused = false;
+
+    function showSlide(i: number) {
+      current = (i + slides.length) % slides.length;
+      slides.forEach((s, idx) => s.classList.toggle("active", idx === current));
+      dots.forEach((d, idx) => {
+        d.classList.toggle("active", idx === current);
+        d.setAttribute("aria-current", idx === current ? "true" : "false");
+      });
+      const title = slides[current].querySelector("h1")?.textContent ?? "";
+      status.textContent = paused
+        ? `Paused on ${title}`
+        : `Auto-rotating \u00b7 ${current + 1} of ${slides.length}`;
+    }
+
+    function next() { showSlide(current + 1); }
+    function prev() { showSlide(current - 1); }
+    function restartTimer() {
+      if (timer) clearInterval(timer);
+      if (!paused) timer = setInterval(next, ROTATE_MS);
+    }
+
+    document.getElementById("next-btn")!.addEventListener("click", () => { next(); restartTimer(); });
+    document.getElementById("prev-btn")!.addEventListener("click", () => { prev(); restartTimer(); });
+    dots.forEach(d => d.addEventListener("click", (e) => {
+      showSlide(parseInt((e.currentTarget as HTMLElement).dataset.idx!, 10));
+      restartTimer();
+    }));
+
+    const hero = document.querySelector(".hero")!;
+    hero.addEventListener("mouseenter", () => { paused = true; showSlide(current); restartTimer(); });
+    hero.addEventListener("mouseleave", () => { paused = false; showSlide(current); restartTimer(); });
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      paused = true;
+      showSlide(0);
+    } else {
+      restartTimer();
+    }
+  </script>
+</Base>

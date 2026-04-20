@@ -1,0 +1,20 @@
+---
+interface Props {
+  platform: "soundcloud" | "spotify" | "apple-music";
+  embedUrl: string;
+  title: string;
+  height?: number;
+}
+const { platform, embedUrl, title, height = 352 } = Astro.props;
+const allow = platform === "spotify" ? "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" : "autoplay; encrypted-media";
+---
+<div class="embed-section">
+  <iframe
+    src={embedUrl}
+    title={title}
+    height={height}
+    loading="lazy"
+    allow={allow}
+    style="border:0"
+  ></iframe>
+</div>

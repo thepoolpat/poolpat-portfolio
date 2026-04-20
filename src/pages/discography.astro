@@ -1,0 +1,29 @@
+---
+import Base from "@/layouts/Base.astro";
+import ListenButton from "@/components/ListenButton.astro";
+import ChartBadge from "@/components/ChartBadge.astro";
+import releases from "@/data/releases.json";
+const base = import.meta.env.BASE_URL;
+const art = (r: any) => `${base}${r.artwork}`;
+---
+<Base title="Poolpat — Discography" description="Full discography for Poolpat — every release across Apple Music, SoundCloud, and Spotify." canonicalPath="/discography/">
+  <h1>Discography</h1>
+  <p class="tagline">Every release. Cork hip-hop, 2023–present.</p>
+
+  <div class="releases">
+    {releases.map((r) => (
+      <a class="release-card" href={`${import.meta.env.BASE_URL}releases/${r.slug}/`}>
+        {r.isCollab && <span class="badge">Collab</span>}
+        {r.charts?.length && <span class="badge" style="left:.6rem;right:auto;background:rgba(250,35,59,.85)">Charted</span>}
+        <div class="cover" style={`background-image:url('${art(r)}')`}></div>
+        <div class="info">
+          <span class="title">{r.title}</span>
+          <span class="date">{r.releaseDate} &middot; {r.typeLabel}</span>
+          {r.charts?.map((c) => (
+            <span class="date" style="color:var(--accent);font-weight:600">{c}</span>
+          ))}
+        </div>
+      </a>
+    ))}
+  </div>
+</Base>

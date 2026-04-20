@@ -1,0 +1,55 @@
+---
+import "@/styles/global.css";
+import SEOHead from "@/components/SEOHead.astro";
+
+interface Props {
+  title: string;
+  description?: string;
+  ogImage?: string;
+  ogType?: "website" | "music.album" | "music.song";
+  canonicalPath?: string;
+}
+const {
+  title,
+  description = "Poolpat — Cork hip-hop artist. Live play stats, discography, and liner notes across SoundCloud, Spotify, and Apple Music.",
+  ogImage,
+  ogType = "website",
+  canonicalPath,
+} = Astro.props;
+
+const siteUrl = import.meta.env.SITE ?? "https://thepoolpat.github.io";
+const defaultOg = `${import.meta.env.BASE_URL}og-default.jpg`;
+const canonical = canonicalPath ? `${siteUrl}${import.meta.env.BASE_URL}${canonicalPath}` : undefined;
+const developerToken = import.meta.env.MUSICKIT_DEVELOPER_TOKEN ?? "";
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b0b0c" />
+  <SEOHead
+    title={title}
+    description={description}
+    ogImage={ogImage}
+    ogType={ogType}
+    canonicalUrl={canonical}
+  />
+  <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}favicon.svg`} />
+  {developerToken && (
+    <script src="https://js-cdn.music.apple.com/musickit/v3/musickit.js" data-web-components async></script>
+  )}
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <main id="main-content">
+    <slot />
+    <footer>
+      &copy; Poolpat &middot; Cork, Ireland &middot;
+      <a href="https://music.apple.com/ie/artist/poolpat/1716939831?at=1000l3chz&app=music&ct=web-portfolio-footer-artist" target="_blank" rel="noopener">Apple Music</a> &middot;
+      <a href="https://soundcloud.com/poolpat" target="_blank" rel="noopener">SoundCloud</a> &middot;
+      <a href="https://open.spotify.com/artist/4rr3o9anpUXitNXo0W4uX7" target="_blank" rel="noopener">Spotify</a>
+    </footer>
+  </main>
+</body>
+</html>

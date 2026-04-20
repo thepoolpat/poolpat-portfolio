@@ -1,0 +1,15 @@
+---
+interface Props {
+  label: string;
+  value: string | number;
+  sub?: string;
+  color?: string;
+}
+const { label, value, sub, color } = Astro.props;
+const style = color ? `border-top: 3px solid ${color}` : "";
+---
+<div class="stat-card" style={style}>
+  <div class="label">{label}</div>
+  <div class="value">{typeof value === "number" ? value.toLocaleString("en-IE") : value}</div>
+  {sub && <div class="sub">{sub}</div>}
+</div>

@@ -1,0 +1,9 @@
+---
+interface Props {
+  position: string;
+}
+const { position } = Astro.props;
+---
+<span class="chart-badge" role="status" aria-label={`Chart position: ${position}`}>
+  &#x1F4C8; {position}
+</span>

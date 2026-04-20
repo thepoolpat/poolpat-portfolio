@@ -1,0 +1,33 @@
+---
+interface Props {
+  title: string;
+  description: string;
+  ogImage?: string;
+  ogType?: string;
+  canonicalUrl?: string;
+  structuredData?: object;
+}
+const { title, description, ogImage, ogType = "website", canonicalUrl, structuredData } = Astro.props;
+const siteUrl = import.meta.env.SITE ?? "https://thepoolpat.github.io";
+const fullOgImage = ogImage?.startsWith("http") ? ogImage : `${siteUrl}${ogImage}`;
+---
+<title>{title}</title>
+<meta name="description" content={description} />
+<meta name="author" content="Poolpat" />
+
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:type" content={ogType} />
+{ogImage && <meta property="og:image" content={fullOgImage} />}
+<meta property="og:site_name" content="Poolpat" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={description} />
+{ogImage && <meta name="twitter:image" content={fullOgImage} />}
+
+{canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
+
+{structuredData && (
+  <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
+)}

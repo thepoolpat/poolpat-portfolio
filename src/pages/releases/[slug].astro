@@ -1,0 +1,95 @@
+---
+import Base from "@/layouts/Base.astro";
+import ListenButton from "@/components/ListenButton.astro";
+import ChartBadge from "@/components/ChartBadge.astro";
+import releases from "@/data/releases.json";
+
+export function getStaticPaths() {
+  return releases.map((r) => ({
+    params: { slug: r.slug },
+    props: { release: r },
+  }));
+}
+
+const { release } = Astro.props;
+const r = release;
+const base = import.meta.env.BASE_URL;
+const artUrl = `${base}${r.artwork}`;
+---
+<Base
+  title={`${r.title} — Poolpat`}
+  description={r.tagline}
+  ogImage={artUrl}
+  ogType="music.album"
+  canonicalPath={`/releases/${r.slug}/`}
+>
+  <a href={`${base}discography/`} class="muted" style="font-size:.9rem">&larr; All releases</a>
+
+  <div class="artwork">
+    <img src={artUrl} alt={`${r.title} cover artwork`} loading="eager" decoding="async" />
+  </div>
+
+  <h1>{r.title}</h1>
+  <p class="tagline">{r.tagline}</p>
+
+  <div class="meta">
+    <span class="badge-type">{r.typeLabel}</span>
+    {r.meta?.map((m) => <span>{m}</span>)}
+    {r.charts?.map((c) => <ChartBadge position={c} />)}
+  </div>
+
+  <ListenButton
+    storefront={r.storefront}
+    type={r.type as "album"}
+    slug={r.slug}
+    id={r.id}
+    campaign={`web-portfolio-${r.slug}-hero`}
+  />
+
+  {r.sections?.map((s) => (
+    <section class="section" id={s.id}>
+      <h2>{s.title}</h2>
+      <p>{s.body}</p>
+    </section>
+  ))}
+
+  <section class="section">
+    <h2>Tracks</h2>
+    <ul class="tracks">
+      {r.tracks.map((t, i) => (
+        <li class="track">
+          <span class="track-num">{i + 1}</span>
+          <span class="track-title">{t.title}</span>
+          <span class="track-duration">{t.duration}</span>
+          <ListenButton
+            small
+            storefront={r.storefront}
+            type="song"
+            slug={t.slug}
+            id={t.id}
+            campaign={`web-portfolio-${r.slug}-t${i + 1}`}
+          />
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  {r.credits && (
+    <section class="section">
+      <h2>Credits</h2>
+      <p set:html={r.credits} />
+    </section>
+  )}
+
+  <section class="section" style="text-align:center">
+    <ListenButton
+      storefront={r.storefront}
+      type={r.type as "album"}
+      slug={r.slug}
+      id={r.id}
+      campaign={`web-portfolio-${r.slug}-cta`}
+    >
+      Listen to the Full Album on Apple Music
+    </ListenButton>
+  </section>
+</Base>

@@ -1,0 +1,155 @@
+[
+  {
+    "slug": "discipline",
+    "title": "Discipline",
+    "type": "album",
+    "typeLabel": "Album",
+    "id": "1731260694",
+    "storefront": "ie",
+    "releaseDate": "2024",
+    "artwork": "artwork/discipline.jpg",
+    "tagline": "Nine tracks. Cork hip-hop with collaborators across two continents — the LP that pulled together two years of late-night sessions and verses traded across timezones.",
+    "meta": ["2024", "Hip-Hop / Rap", "Cork, IE"],
+    "credits": "Featuring <strong>Shanakee</strong>, <strong>Farid Williams</strong>, <strong>Otaku Black</strong>, <strong>Goldie Bron$on</strong>, <strong>Haneli</strong>, <strong>SaturnAstrid</strong>, <strong>Jimmy Cena</strong>, and <strong>JusMe</strong> (scratch). Influences: Massive Attack's <em>Mezzanine</em>, Stupeflip, XXV-era compilations.",
+    "sections": [
+      { "id": "intro", "title": "Why This Album Exists", "body": "Discipline is the LP that pulled together two years of late-night sessions and verses traded across timezones. Built around heavyweight features — Shanakee and Farid Williams thread through almost every track — it's also the record where the remix of one cut hit #16 on Apple Music Ireland's Hip-Hop/Rap Albums chart." },
+      { "id": "production", "title": "Behind the Production", "body": "Influences sit on the record like fingerprints: the dense low-end of Massive Attack's Mezzanine, the wired-up chaos of Stupeflip, the wide-eyed scope of XXV-era compilations. Tracked between Cork sessions and remote stems from collaborators. Mixed for headphones first, then made to survive the car." },
+      { "id": "credits", "title": "Credits & Features", "body": "Featuring Shanakee, Farid Williams, Otaku Black, Goldie Bron$on, Haneli, SaturnAstrid, Jimmy Cena, JusMe (scratch). Special thanks to everyone who showed up to the booth and to the listeners who pushed the remix into the IE chart." }
+    ],
+    "tracks": [
+      { "id": "1731260695", "title": "Sephiroth (feat. Shanakee & Farid Williams)", "duration": "2:27", "slug": "sephiroth-feat-shanakee-farid-williams" },
+      { "id": "1731260707", "title": "Collective Suicide X Otaku Black", "duration": "4:09", "slug": "collective-suicide-x-otaku-black" },
+      { "id": "1731260706", "title": "I hear the rain X Haneli", "duration": "2:16", "slug": "i-hear-the-rain-x-haneli" },
+      { "id": "1731260705", "title": "The Moocher X Goldie Bron$on X Jack Eagan", "duration": "3:07", "slug": "the-moocher-x-goldie-bronson-x-jack-eagan" },
+      { "id": "1731260703", "title": "Minnie X SaturnAstrid", "duration": "4:09", "slug": "minnie-x-saturnastrid" },
+      { "id": "1731260701", "title": "Ooh La La La! (feat. Shanakee & Farid Williams)", "duration": "3:50", "slug": "ooh-la-la-la-feat-shanakee-farid-williams" },
+      { "id": "1731260700", "title": "The Kraken X Otaku Black X Jimmy Cena", "duration": "2:34", "slug": "the-kraken-x-otaku-black-x-jimmy-cena" },
+      { "id": "1731260697", "title": "Interlude De Bat%Rd", "duration": "1:18", "slug": "interlude-de-batrd" },
+      { "id": "1731260696", "title": "Ça Me Saoule (feat. Shanakee & Farid Williams)", "duration": "3:39", "slug": "ca-me-saoule-feat-shanakee-farid-williams" }
+    ]
+  },
+  {
+    "slug": "folks-now-minnie-single",
+    "title": "Folks Now! / Minnie",
+    "type": "album",
+    "typeLabel": "Single (2-track)",
+    "id": "1852774908",
+    "storefront": "ie",
+    "releaseDate": "2025-12-13",
+    "artwork": "artwork/folks-now-minnie.jpg",
+    "tagline": "Two-track single — the Discipline cuts that wouldn't sit still, finally on their own terms.",
+    "meta": ["December 2025", "Hip-Hop / Rap", "Cork, IE", "feat. Jaws + Farid Williams"],
+    "credits": "<strong>Minnie</strong> lands solo here after appearing in its <em>X SaturnAstrid</em> form on Discipline. <strong>Folks Now!</strong> brings <strong>Jaws</strong> and <strong>Farid Williams</strong> back into the room.",
+    "sections": [
+      { "id": "intro", "title": "About These Two", "body": "'Minnie' was always going to be the one people came back to — featured on Discipline in its X SaturnAstrid form, here it lands solo. 'Folks Now!' brings Jaws and Farid Williams back into the room. Two tracks, two energies." }
+    ],
+    "tracks": [
+      { "id": "1852774910", "title": "Minnie", "duration": "4:17", "slug": "minnie" },
+      { "id": "1852774909", "title": "Folks Now! (feat. Jaws & Farid Williams)", "duration": "2:58", "slug": "folks-now-feat-jaws-farid-williams" }
+    ]
+  },
+  {
+    "slug": "no-eyes-single",
+    "title": "No Eyes",
+    "type": "album",
+    "typeLabel": "Single",
+    "id": "1781992914",
+    "storefront": "ie",
+    "releaseDate": "2024-11-26",
+    "artwork": "artwork/no-eyes.jpg",
+    "tagline": "Six minutes. One track. No Eyes. A long-form single, written and recorded in the gap between Discipline and the next thing.",
+    "meta": ["November 2024", "Hip-Hop / Rap", "Cork, IE", "6:18 long-form"],
+    "credits": "A long-form single — six minutes is a deliberate choice; the song earns it.",
+    "sections": [
+      { "id": "intro", "title": "About 'No Eyes'", "body": "A long-form single, written and recorded in the gap between Discipline and the next thing. Six minutes is a deliberate choice — the song earns it." }
+    ],
+    "tracks": [
+      { "id": "1781992915", "title": "No Eyes", "duration": "6:18", "slug": "no-eyes" }
+    ]
+  },
+  {
+    "slug": "wanna-be-seen-single",
+    "title": "Wanna Be Seen",
+    "type": "album",
+    "typeLabel": "Single feat. Jaws",
+    "id": "1763996259",
+    "storefront": "ie",
+    "releaseDate": "2024-09-01",
+    "artwork": "artwork/wanna-be-seen.jpg",
+    "tagline": "Cork meets Cork. Poolpat × Jaws, two and a half minutes flat — the kind of single you stick on at the start of a night.",
+    "meta": ["September 2024", "Hip-Hop / Rap", "Cork, IE", "feat. Jaws"],
+    "credits": "Quick, direct, no chorus tax. Cork-on-Cork collaboration with <strong>Jaws</strong>.",
+    "sections": [
+      { "id": "intro", "title": "About 'Wanna Be Seen'", "body": "Quick, direct, no chorus tax. The kind of single you stick on at the start of a night." }
+    ],
+    "tracks": [
+      { "id": "1763996266", "title": "Wanna Be Seen (feat. Jaws)", "duration": "2:28", "slug": "wanna-be-seen-feat-jaws" }
+    ]
+  },
+  {
+    "slug": "get-it-out-single",
+    "title": "Get It Out",
+    "type": "album",
+    "typeLabel": "Single feat. Farid Williams",
+    "id": "1729532571",
+    "storefront": "ie",
+    "releaseDate": "2023-12-01",
+    "artwork": "artwork/get-it-out.jpg",
+    "tagline": "The opening shot. December 2023 — the single that set the tone for what would become Discipline.",
+    "meta": ["December 2023", "Hip-Hop / Rap", "Cork, IE", "feat. Farid Williams"],
+    "credits": "First Poolpat × <strong>Farid Williams</strong> release. Three minutes that previewed the chemistry the LP would lean on.",
+    "sections": [
+      { "id": "intro", "title": "About 'Get It Out'", "body": "First Poolpat × Farid Williams release. Three minutes that previewed the chemistry the LP would lean on." }
+    ],
+    "tracks": [
+      { "id": "1729532572", "title": "Get It Out (feat. Farid Williams)", "duration": "3:03", "slug": "get-it-out-feat-farid-williams" }
+    ]
+  },
+  {
+    "slug": "jimmy-cena-shanakee-ep",
+    "title": "Jimmy Cena × Shanakee (Remix by Poolpat)",
+    "type": "album",
+    "typeLabel": "Remix EP",
+    "id": "1716940760",
+    "storefront": "ie",
+    "releaseDate": "2023-12-15",
+    "artwork": "artwork/jimmy-cena-shanakee.png",
+    "tagline": "Poolpat remixes the Jimmy Cena × Shanakee sessions — five tracks reworked from the ground up.",
+    "meta": ["December 2023", "Hip-Hop / Rap", "Cork, IE", "Remix EP"],
+    "charts": ["#16 Hip-Hop/Rap — Ireland", "#120 All Albums — Ireland"],
+    "credits": "Full remix production by <strong>Poolpat</strong> on the <strong>Jimmy Cena</strong> × <strong>Shanakee</strong> EP. Features <strong>Djar One</strong>, <strong>Bubba Shakespeare</strong>, <strong>Emi J</strong>, <strong>Farid William</strong>, and <strong>Jaws</strong>.",
+    "isCollab": true,
+    "sections": [
+      { "id": "intro", "title": "About This Remix EP", "body": "Full remix production by Poolpat on the Jimmy Cena × Shanakee EP. Charted #16 Hip-Hop/Rap and #120 All Albums on Apple Music Ireland." }
+    ],
+    "tracks": [
+      { "id": "1716940761", "title": "Samurai Jack (feat. Poolpat)", "duration": "0:41", "slug": "samurai-jack-feat-poolpat" },
+      { "id": "1716940763", "title": "Tapis Rouge (feat. Djar One, Bubba Shakespeare & Emi J) [Remix]", "duration": "3:21", "slug": "tapis-rouge-remix" },
+      { "id": "1716940765", "title": "J'peux pas y a le match (feat. Djar One & Farid William) [Remix]", "duration": "2:19", "slug": "jpeux-pas-remix" },
+      { "id": "1716940766", "title": "La Note (feat. Djar One) [Remix]", "duration": "3:09", "slug": "la-note-remix" },
+      { "id": "1716940767", "title": "Déjà 30 piges (feat. Djar One & Jaws) [Remix]", "duration": "2:30", "slug": "deja-30-piges-remix" }
+    ]
+  },
+  {
+    "slug": "unfinished-legacy",
+    "title": "(Unfinished) Legacy",
+    "type": "album",
+    "typeLabel": "Collab — Jack Egan",
+    "id": "1754624010",
+    "storefront": "ie",
+    "releaseDate": "2024-08-01",
+    "artwork": "artwork/unfinished-legacy.jpg",
+    "tagline": "Jack Egan's release featuring Poolpat across three tracks — including a remastered cut of 'The Moocher' and two Irish-language instrumentals.",
+    "meta": ["August 2024", "Hip-Hop / Rap", "Cork, IE", "Appears on (Jack Egan)"],
+    "credits": "Appears-on release by <strong>Jack Egan</strong>. Three tracks featuring Poolpat: a remastered <em>Moocher</em> with Goldie Bron$on, plus two Irish-language instrumentals.",
+    "isCollab": true,
+    "sections": [
+      { "id": "intro", "title": "About '(Unfinished) Legacy'", "body": "Jack Egan's release featuring Poolpat across three tracks: a remastered Moocher with Goldie Bron$on, plus two Irish-language instrumentals (Cara Mo Bhean Chéile, Teacht Le Chéile)." }
+    ],
+    "tracks": [
+      { "id": "1754624013", "title": "The Moocher (feat. Poolpat & Goldie Bron$on) [Remastered]", "duration": "3:10", "slug": "the-moocher-remastered" },
+      { "id": "1754624012", "title": "Cara Mo Bhean Chéile (feat. Poolpat) [Instrumental]", "duration": "2:02", "slug": "cara-mo-bhean-cheile" },
+      { "id": "1754624011", "title": "Teacht Le Chéile (feat. Poolpat) [Instrumental]", "duration": "3:40", "slug": "teacht-le-cheile" }
+    ]
+  }
+]

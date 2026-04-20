@@ -1,0 +1,26 @@
+{
+  "name": "poolpat-portfolio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Unified artist portfolio — play stats, discography, liner notes. Astro + MusicKit + affiliate attribution.",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thepoolpat/poolpat-portfolio.git"
+  },
+  "author": "Poolpat",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@astrojs/check": "^0.9.8",
+    "@astrojs/sitemap": "^3.7.2",
+    "astro": "^6.1.8",
+    "chart.js": "^4.5.1",
+    "typescript": "^5.9.3"
+  }
+}
