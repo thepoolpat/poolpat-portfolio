@@ -23,7 +23,7 @@ import requests
 
 TOKEN_URL = "https://accounts.spotify.com/api/token"
 AUTH_URL = "https://accounts.spotify.com/authorize"
-DEFAULT_REDIRECT_URI = "http://localhost:8888/callback"
+DEFAULT_REDIRECT_URI = "https://localhost:8888/callback"
 DEFAULT_SCOPES = "user-read-private user-top-read user-read-recently-played streaming"
 
 
