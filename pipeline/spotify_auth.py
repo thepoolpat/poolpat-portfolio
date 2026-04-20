@@ -23,7 +23,7 @@ import requests
 
 TOKEN_URL = "https://accounts.spotify.com/api/token"
 AUTH_URL = "https://accounts.spotify.com/authorize"
-DEFAULT_REDIRECT_URI = "https://localhost:8888/callback"
+DEFAULT_REDIRECT_URI = "http://127.0.0.1:8888/callback"
 DEFAULT_SCOPES = "user-read-private user-top-read user-read-recently-played streaming"
 
 
@@ -145,7 +145,7 @@ def _run_local_auth(client_id: str, redirect_uri: str, scopes: str) -> str:
 
     # Try local callback server first; fall back to manual paste
     try:
-        server = HTTPServer(("localhost", port), CallbackHandler)
+        server = HTTPServer(("127.0.0.1", port), CallbackHandler)
         server.timeout = 120
         server.handle_request()
         server.server_close()
