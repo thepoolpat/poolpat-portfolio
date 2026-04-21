@@ -6,11 +6,11 @@ const isPublic = process.env.DEPLOY_TARGET === "public";
 
 const site = isPublic
   ? "https://thepoolpat.github.io"
-  : "https://REDACTED/thepoolpat/poolpat-portfolio";
+  : "http://localhost:4321";
 
 const base = isPublic
   ? "/poolpat-portfolio/"
-  : "/thepoolpat/poolpat-portfolio/";
+  : "/";
 
 export default defineConfig({
   site,
