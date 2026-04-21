@@ -42,12 +42,12 @@ const amSorted = sortedTracks(amTracks);
     <h2>Play Count Trends</h2>
     <div class="chart-container">
       <canvas id="plays-chart" role="img" aria-label="Line chart showing play count trends over time for SoundCloud, Spotify, and Apple Music"></canvas>
-      <script type="application/json" id="chart-data" set:html={historyRaw}></script>
+      <script type="application/json" id="chart-data">{JSON.stringify(historyRaw)}</script>
     </div>
   </section>
 
   <script type="module">
-    const raw = document.getElementById("chart-data").textContent.trim();
+    const raw = JSON.parse(document.getElementById("chart-data").textContent);
     const lines = raw.split("\n");
     const headers = lines[0].split(",");
     const rows = lines.slice(1).filter(l => l.trim()).map(l => {

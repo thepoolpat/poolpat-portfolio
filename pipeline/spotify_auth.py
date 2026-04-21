@@ -95,9 +95,7 @@ def refresh_access_token(client_id: str, refresh_token: str) -> dict[str, Any]:
 
     if "refresh_token" in data and data["refresh_token"] != refresh_token:
         print(
-            "\n⚠  Spotify rotated your refresh token."
-            "\n   Update the SPOTIFY_REFRESH_TOKEN secret with this new value:"
-            f"\n   {data['refresh_token']}\n",
+            "\n⚠  Spotify rotated your refresh token. Update SPOTIFY_REFRESH_TOKEN secret.",
             file=sys.stderr,
         )
 
@@ -179,16 +177,22 @@ if __name__ == "__main__":
 
     tokens = _run_local_auth(client_id, redirect_uri, scopes)
 
+    refresh = tokens["refresh_token"]
     print("\n" + "=" * 60)
     print("Authorization successful!")
     print("=" * 60)
-    print(f"\nAccess Token (expires in {tokens.get('expires_in', '?')}s):")
-    print(f"  {tokens['access_token'][:20]}...")
-    print(f"\nRefresh Token (add as GitHub Actions secret):")
-    print(f"  SPOTIFY_REFRESH_TOKEN={tokens['refresh_token']}")
     print(f"\nScopes granted: {tokens.get('scope', 'unknown')}")
+    print(f"Expires in: {tokens.get('expires_in', '?')}s")
+
+    try:
+        import subprocess
+        subprocess.run(["pbcopy"], input=refresh.encode(), check=True)
+        print("\nRefresh token copied to clipboard.")
+    except Exception:
+        print(f"\nRefresh token:\n  {refresh}")
+
     print("\nNext steps:")
     print("  1. Go to your repo Settings → Secrets → Actions")
-    print("  2. Add secret: SPOTIFY_REFRESH_TOKEN")
-    print(f"  3. Value: {tokens['refresh_token']}")
+    print("  2. Add/update secret: SPOTIFY_REFRESH_TOKEN")
+    print("  3. Paste the value from your clipboard")
     print("=" * 60)

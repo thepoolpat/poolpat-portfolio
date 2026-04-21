@@ -4,14 +4,9 @@ from __future__ import annotations
 
 import sys
 import time
-from pathlib import Path
 from typing import Any
 
 import requests
-
-_PIPELINE_DIR = Path(__file__).resolve().parent
-if str(_PIPELINE_DIR) not in sys.path:
-    sys.path.insert(0, str(_PIPELINE_DIR))
 
 from spotify_errors import (
     SpotifyAuthError,

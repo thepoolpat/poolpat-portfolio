@@ -6,3 +6,6 @@ dist/
 .env.*
 !.env.example
 .fetch_failures.json
+*.p8
+*.pem
+*.key
