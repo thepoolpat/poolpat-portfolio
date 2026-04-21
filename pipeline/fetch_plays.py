@@ -18,9 +18,11 @@ from pathlib import Path
 import requests
 from bs4 import BeautifulSoup
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+_PIPELINE_DIR = Path(__file__).resolve().parent
+if str(_PIPELINE_DIR) not in sys.path:
+    sys.path.insert(0, str(_PIPELINE_DIR))
 
-DATA_DIR = Path(__file__).parent.parent / "data"
+DATA_DIR = _PIPELINE_DIR.parent / "data"
 PLAYS_JSON = DATA_DIR / "plays.json"
 HISTORY_CSV = DATA_DIR / "history.csv"
 FAIL_TRACKER = DATA_DIR / ".fetch_failures.json"
@@ -447,8 +449,9 @@ def fetch_apple_music_all(existing_am: dict) -> tuple[dict, bool]:
     """
     print("\n--- Apple Music ---")
     track_names = []
+    apple_token = os.environ.get("APPLE_MUSIC_TOKEN", "").strip()
+
     try:
-        apple_token = os.environ.get("APPLE_MUSIC_TOKEN")
         if apple_token:
             resp = requests.get(
                 f"https://api.music.apple.com/v1/catalog/us/artists/{APPLE_MUSIC_ARTIST_ID}/songs",
@@ -459,19 +462,31 @@ def fetch_apple_music_all(existing_am: dict) -> tuple[dict, bool]:
                 for song in resp.json().get("data", []):
                     track_names.append(song.get("attributes", {}).get("name", "Unknown"))
                 print(f"  Apple Music API: {len(track_names)} catalog tracks")
+            else:
+                print(f"  Apple Music API: HTTP {resp.status_code} (token may be expired)", file=sys.stderr)
+        else:
+            print("  APPLE_MUSIC_TOKEN not set — skipping API, trying web scrape")
+
         if not track_names:
             resp = requests.get(APPLE_MUSIC_ARTIST_URL, headers=HEADERS, timeout=30)
-            resp.raise_for_status()
-            soup = BeautifulSoup(resp.text, "html.parser")
-            for script in soup.find_all("script", type="application/ld+json"):
-                try:
-                    data = json.loads(script.string)
-                    if isinstance(data, dict) and data.get("@type") == "MusicGroup":
-                        for track in data.get("track", []):
-                            track_names.append(track.get("name", "Unknown"))
-                except (json.JSONDecodeError, TypeError):
-                    continue
-            print(f"  Apple Music scrape: {len(track_names)} catalog tracks")
+            if resp.status_code == 200:
+                soup = BeautifulSoup(resp.text, "html.parser")
+                for script in soup.find_all("script", type="application/ld+json"):
+                    try:
+                        data = json.loads(script.string)
+                        if isinstance(data, dict) and data.get("@type") == "MusicGroup":
+                            for track in data.get("track", []):
+                                track_names.append(track.get("name", "Unknown"))
+                    except (json.JSONDecodeError, TypeError):
+                        continue
+                print(f"  Apple Music scrape: {len(track_names)} catalog tracks")
+            else:
+                print(f"  Apple Music scrape: HTTP {resp.status_code}", file=sys.stderr)
+
+    except requests.exceptions.Timeout:
+        print("  Apple Music: request timed out", file=sys.stderr)
+    except requests.exceptions.ConnectionError:
+        print("  Apple Music: connection failed (check network)", file=sys.stderr)
     except Exception as e:
         print(f"  Apple Music error: {e}", file=sys.stderr)
 
