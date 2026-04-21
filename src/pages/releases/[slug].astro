@@ -15,6 +15,7 @@ const { release } = Astro.props;
 const r = release;
 const base = import.meta.env.BASE_URL;
 const artUrl = `${base}${r.artwork}`;
+const safeCredits = r.credits?.replace(/<(?!\/?(?:strong|em|br)\b)[^>]*>/gi, "") ?? "";
 ---
 <Base
   title={`${r.title} — Poolpat`}
@@ -77,7 +78,7 @@ const artUrl = `${base}${r.artwork}`;
   {r.credits && (
     <section class="section">
       <h2>Credits</h2>
-      <p set:html={r.credits} />
+      <p set:html={safeCredits} />
     </section>
   )}
 

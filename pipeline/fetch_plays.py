@@ -11,7 +11,7 @@ import json
 import os
 import re
 import sys
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -19,9 +19,6 @@ import requests
 from bs4 import BeautifulSoup
 
 _PIPELINE_DIR = Path(__file__).resolve().parent
-if str(_PIPELINE_DIR) not in sys.path:
-    sys.path.insert(0, str(_PIPELINE_DIR))
-
 DATA_DIR = _PIPELINE_DIR.parent / "data"
 PLAYS_JSON = DATA_DIR / "plays.json"
 HISTORY_CSV = DATA_DIR / "history.csv"
@@ -426,10 +423,9 @@ def fetch_spotify_all(existing_sp: dict) -> tuple[dict, bool]:
         }
 
         if user_data_fetched:
-            sp_data["top_tracks_short"] = top_tracks_short
-            sp_data["top_tracks_medium"] = top_tracks_medium
-            sp_data["top_tracks_long"] = top_tracks_long
-            sp_data["recently_played"] = recently_played
+            sp_data["top_tracks_short"] = [t["name"] for t in top_tracks_short]
+            sp_data["top_tracks_medium"] = [t["name"] for t in top_tracks_medium]
+            sp_data["top_tracks_long"] = [t["name"] for t in top_tracks_long]
 
     else:
         sp_data = dict(existing_sp) if existing_sp else {}

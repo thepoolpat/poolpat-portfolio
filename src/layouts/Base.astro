@@ -27,6 +27,7 @@ const developerToken = import.meta.env.MUSICKIT_DEVELOPER_TOKEN ?? "";
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0b0b0c" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://js-cdn.music.apple.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; frame-src https://open.spotify.com https://w.soundcloud.com https://embed.music.apple.com; connect-src 'self' https://cdn.jsdelivr.net" />
   <SEOHead
     title={title}
     description={description}

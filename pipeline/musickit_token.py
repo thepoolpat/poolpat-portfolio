@@ -89,11 +89,18 @@ if __name__ == "__main__":
     print("MusicKit developer token generated!")
     print("=" * 60)
     print(f"\nValid for 180 days (expires {time.strftime('%Y-%m-%d', time.localtime(time.time() + 180*86400))})")
-    print(f"\nToken (first 50 chars): {token[:50]}...")
-    print(f"\nFull token length: {len(token)} characters")
+    print(f"Token length: {len(token)} characters")
+
+    try:
+        import subprocess
+        subprocess.run(["pbcopy"], input=token.encode(), check=True)
+        print("\nToken copied to clipboard.")
+    except Exception:
+        print(f"\nToken: {token}")
+
     print("\nAdd as GitHub Actions secrets:")
-    print(f"  APPLE_MUSIC_TOKEN={token}")
-    print(f"  MUSICKIT_DEVELOPER_TOKEN={token}")
+    print("  APPLE_MUSIC_TOKEN (paste from clipboard)")
+    print("  MUSICKIT_DEVELOPER_TOKEN (same value)")
     print("\nOr set in .env:")
     print(f"  APPLE_MUSIC_TOKEN={token}")
     print("=" * 60)
