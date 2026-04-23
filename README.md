@@ -124,7 +124,7 @@ The Python fetcher runs daily at 07:15 UTC via GitHub Actions:
 ## Affiliate Attribution
 
 Every Apple Music link is built through the validated `link()` helper (`packages/affiliate-helper/js/`):
-- Token: `1000l3chz`
+- Token
 - Campaign format: `web-portfolio-{slug}-{placement}`
 - Max 64 characters, validated at build time
 
