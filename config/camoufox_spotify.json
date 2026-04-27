@@ -1,0 +1,28 @@
+{
+  "camoufox": {
+    "enabled": true,
+    "base_url": "http://127.0.0.1:8888",
+    "spotify_integration": {
+      "client_id": "88d1cb87aba74f809133542879d8885c",
+      "redirect_uri": "http://127.0.0.1:8888/callback",
+      "auto_refresh": true,
+      "device_poll_interval_ms": 5000
+    }
+  },
+  "spotify": {
+    "api_base_url": "https://api.spotify.com/v1",
+    "scopes": [
+      "user-modify-playback-state",
+      "user-read-playback-state",
+      "user-read-currently-playing",
+      "user-read-recently-played",
+      "playlist-read-private",
+      "playlist-read-collaborative",
+      "playlist-modify-public",
+      "playlist-modify-private",
+      "user-library-read",
+      "user-library-modify"
+    ],
+    "auth_type": "oauth_pkce"
+  }
+}
