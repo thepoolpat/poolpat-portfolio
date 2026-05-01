@@ -61,9 +61,9 @@ const amSorted = sortedTracks(amTracks);
       const d = new Date(r.timestamp || r[headers[0]]);
       return d.toLocaleDateString("en-IE", { month: "short", day: "numeric" });
     });
-    const sc = rows.map(r => parseInt(r.soundcloud_total_plays) || 0);
-    const sp = rows.map(r => parseInt(r.spotify_total_streams || r.spotify_total_popularity) || 0);
-    const am = rows.map(r => parseInt(r.apple_music_total_plays || r.apple_music_track_count) || 0);
+const sc = rows.map(r => parseInt(r.soundcloud_total_plays) || 0);
+const sp = rows.map(r => parseInt(r.spotify_total_streams || r.spotify_total_popularity) || 0);
+const am = rows.map(r => parseInt(r.apple_music_total_plays) || 0);
 
     const { Chart, registerables } = await import("https://cdn.jsdelivr.net/npm/chart.js@4/+esm");
     Chart.register(...registerables);
