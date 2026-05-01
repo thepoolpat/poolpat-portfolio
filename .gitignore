@@ -9,3 +9,29 @@ dist/
 *.p8
 *.pem
 *.key
+
+# Python cache and test artifacts
+pipeline/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.eggs/
+
+# Test directories
+pipeline/tests/
+test_*.py
+*_test.py
+coverage/
+.coverage
+htmlcov/
+
+# OAuth cache directories
+~/.cache/spotify_oauth/
+~/.cache/spotify_oauth_auth/
+
+# Camoufox artifacts
+camoufox/
+~/.camoufox/
+*.camoufox
