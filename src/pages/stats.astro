@@ -47,155 +47,148 @@ const amSorted = sortedTracks(amTracks);
   </section>
 
   <script type="module">
-    const raw = JSON.parse(document.getElementById("chart-data").textContent);
-    const lines = raw.split("\n");
-    const headers = lines[0].split(",");
-    const rows = lines.slice(1).filter(l => l.trim()).map(l => {
-      const vals = l.split(",");
-      const obj = {};
-      headers.forEach((h, i) => obj[h.trim()] = vals[i]?.trim() ?? "");
-      return obj;
-    });
+    (async () => {
+      const chartDataEl = document.getElementById("chart-data");
+      const canvas = document.getElementById("plays-chart");
 
-    // Clamp cumulative values — they should never decrease (guard against data corruption)
-    function clampCumulative(arr) {
-      let max = 0;
-      return arr.map(v => { max = Math.max(max, v); return max; });
-    }
+      function parseCsv(raw) {
+        const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        if (lines.length < 2) return [];
+        const headers = lines[0].split(",").map(h => h.trim());
+        return lines.slice(1).map(line => {
+          const values = line.split(",").map(v => v.trim());
+          const row = {};
+          headers.forEach((h, i) => { row[h] = values[i] !== undefined ? values[i] : ""; });
+          return row;
+        });
+      }
 
-    const sc = clampCumulative(rows.map(r => parseInt(r.soundcloud_total_plays) || 0));
-    const sp = clampCumulative(rows.map(r => parseInt(r.spotify_total_streams || r.spotify_total_popularity) || 0));
-    const am = clampCumulative(rows.map(r => parseInt(r.apple_music_total_plays) || 0));
+      function toInt(v) {
+        const n = parseInt(String(v || "").replace(/[^\d]/g, ""), 10);
+        return isFinite(n) ? n : 0;
+      }
 
-    const { Chart, registerables } = await import("https://cdn.jsdelivr.net/npm/chart.js@4/+esm");
-    Chart.register(...registerables);
+      function clamp(arr) {
+        let max = 0;
+        return arr.map(v => { max = Math.max(max, v); return max; });
+      }
 
-    new Chart(document.getElementById("plays-chart"), {
-      type: "line",
-      data: {
-        labels: rows.map(r => new Date(r.timestamp || r[headers[0]]).toLocaleDateString("en-IE", { month: "short", day: "numeric", year: "numeric" })),
-        datasets: [
-           { 
-             label: "SoundCloud", 
-             data: sc, 
-             borderColor: "#FF4000", 
-             backgroundColor: "rgba(255, 64, 0, 0.15)", 
-             fill: true, 
-             tension: 0.4, 
-             borderWidth: 3,
-             pointRadius: 0,
-             pointHitRadius: 10
-           },
-           { 
-             label: "Spotify", 
-             data: sp, 
-             borderColor: "#1DB954", 
-             backgroundColor: "rgba(29, 185, 84, 0.15)", 
-             fill: true, 
-             tension: 0.4, 
-             borderWidth: 3, 
-             pointRadius: 0,
-             pointHitRadius: 10
-           },
-           { 
-             label: "Apple Music", 
-             data: am, 
-             borderColor: "#FC3C44", 
-             backgroundColor: "rgba(252, 60, 68, 0.15)", 
-             fill: true, 
-             tension: 0.4, 
-             borderWidth: 3, 
-             pointRadius: 0,
-             pointHitRadius: 10
-           },
-         ],
-       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { 
-          legend: { 
-            labels: { 
-              color: "#f5f5f7", 
-              font: { size: 14, weight: 'bold' },
-              padding: 20
-             },
-            position: 'top'
-           },
-          title: {
-            display: true,
-            text: "Play Count History (Big Bang → Present)",
-            color: "#f5f5f7",
-            font: { size: 18, weight: 'bold', family: 'system-ui, -apple-system, sans-serif' },
-            padding: { top: 10, bottom: 20 }
-          },
-          tooltip: {
-            backgroundColor: "rgba(0,0,0,0.8)",
-            titleColor: "#f5f5f7",
-            bodyColor: "#f5f5f7",
-            borderColor: "rgba(255,255,255,0.2)",
-            borderWidth: 1,
-            padding: 12,
-            titleFont: { size: 14, weight: 'bold' },
-            bodyFont: { size: 13 }
-           }
-         },
-        scales: {
-          x: { 
-            ticks: { 
-              color: "#98989d", 
-              maxTicksLimit: 12, 
-              font: { size: 11 },
-              maxRotation: 0,
-              minRotation: 0
-             }, 
-            grid: { color: "rgba(240,240,245,0.08)" },
+      const raw = JSON.parse(chartDataEl.textContent || "\"\"");
+      const rows = parseCsv(raw);
+
+      if (!rows.length) {
+        const p = document.createElement("p");
+        p.className = "muted";
+        p.textContent = "Trend data is not available yet.";
+        canvas.replaceWith(p);
+        return;
+      }
+
+      const labels = rows.map(r => {
+        const d = new Date(r.timestamp);
+        return isNaN(d) ? r.timestamp : d.toLocaleDateString("en-IE", { month: "short", day: "numeric", year: "numeric" });
+      });
+
+      const sc = clamp(rows.map(r => toInt(r.soundcloud_total_plays)));
+      const sp = clamp(rows.map(r => toInt(r.spotify_total_streams || r.spotify_total_popularity)));
+      const am = clamp(rows.map(r => toInt(r.apple_music_total_plays)));
+
+      const { Chart, registerables } = await import("https://cdn.jsdelivr.net/npm/chart.js@4/+esm");
+      Chart.register(...registerables);
+
+      new Chart(canvas, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "SoundCloud",
+              data: sc,
+              borderColor: "#FF4000",
+              backgroundColor: "rgba(255,64,0,0.15)",
+              fill: true,
+              tension: 0.4,
+              borderWidth: 3,
+              pointRadius: 0,
+              pointHitRadius: 10
+            },
+            {
+              label: "Spotify",
+              data: sp,
+              borderColor: "#1DB954",
+              backgroundColor: "rgba(29,185,84,0.15)",
+              fill: true,
+              tension: 0.4,
+              borderWidth: 3,
+              pointRadius: 0,
+              pointHitRadius: 10
+            },
+            {
+              label: "Apple Music",
+              data: am,
+              borderColor: "#FC3C44",
+              backgroundColor: "rgba(252,60,68,0.15)",
+              fill: true,
+              tension: 0.4,
+              borderWidth: 3,
+              pointRadius: 0,
+              pointHitRadius: 10
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: "top",
+              labels: { color: "#f5f5f7", font: { size: 14, weight: "bold" }, padding: 20 }
+            },
             title: {
               display: true,
-              text: "Timeline",
-              color: "#98989d",
-              font: { size: 14, weight: 'bold', family: 'system-ui' }
-             }
-           },
-          y: { 
-            type: "linear",
-            beginAtZero: true,
-            ticks: { 
-              color: "#98989d",
-              callback: function(value, index, values) {
-                if (value === 0) return "0";
-                if (value <= 1000) return Math.round(value).toLocaleString();
-                if (value <= 100000) return (value / 1000).toFixed(0) + "K";
-                if (value <= 1500000) return (value / 1000).toFixed(0) + "K";
-                return (value / 1000000).toFixed(1) + "M";
-               },
-              stepSize: 100000
-             },
-            grid: { color: "rgba(240,240,245,0.08)" },
-            title: {
-              display: true,
-              text: "Cumulative Plays",
-              color: "#98989d",
-              font: { size: 14, weight: 'bold', family: 'system-ui' }
-             }
-           },
-        },
-        elements: {
-          line: {
-            tension: 0.4,
-            borderWidth: 3
+              text: "Play Count History",
+              color: "#f5f5f7",
+              font: { size: 18, weight: "bold", family: "system-ui, -apple-system, sans-serif" },
+              padding: { top: 10, bottom: 20 }
+            },
+            tooltip: {
+              backgroundColor: "rgba(0,0,0,0.8)",
+              titleColor: "#f5f5f7",
+              bodyColor: "#f5f5f7",
+              borderColor: "rgba(255,255,255,0.2)",
+              borderWidth: 1,
+              padding: 12,
+              titleFont: { size: 14, weight: "bold" },
+              bodyFont: { size: 13 }
+            }
           },
-          point: {
-            radius: 0,
-            hitRadius: 10
-          }
-        },
-        animation: {
-          duration: 2000,
-          easing: 'easeOutQuart'
+          scales: {
+            x: {
+              ticks: { color: "#98989d", maxTicksLimit: 12, font: { size: 11 }, maxRotation: 0 },
+              grid: { color: "rgba(240,240,245,0.08)" },
+              title: { display: true, text: "Timeline", color: "#98989d", font: { size: 14, weight: "bold" } }
+            },
+            y: {
+              type: "linear",
+              beginAtZero: true,
+              ticks: {
+                color: "#98989d",
+                callback(value) {
+                  if (value === 0) return "0";
+                  if (value < 1000) return Math.round(value).toLocaleString();
+                  if (value < 1000000) return (value / 1000).toFixed(0) + "K";
+                  return (value / 1000000).toFixed(1) + "M";
+                }
+              },
+              grid: { color: "rgba(240,240,245,0.08)" },
+              title: { display: true, text: "Cumulative Plays", color: "#98989d", font: { size: 14, weight: "bold" } }
+            }
+          },
+          elements: { line: { tension: 0.4, borderWidth: 3 }, point: { radius: 0, hitRadius: 10 } },
+          animation: { duration: 1200, easing: "easeOutQuart" }
         }
-       },
-     });
+      });
+    })();
   </script>
 
   <section class="section">
