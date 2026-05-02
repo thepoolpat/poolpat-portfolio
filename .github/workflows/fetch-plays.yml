@@ -21,6 +21,7 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/thepoolpat/poolpat-plays/main/data/plays.json -o data/plays.json
           curl -fsSL https://raw.githubusercontent.com/thepoolpat/poolpat-plays/main/data/history.csv -o data/history.csv
           curl -fsSL https://raw.githubusercontent.com/thepoolpat/poolpat-plays/main/data/rss_tracks.json -o data/rss_tracks.json
+          curl -fsSL https://raw.githubusercontent.com/thepoolpat/poolpat-plays/main/data/playlists.json -o data/playlists.json || echo '{"playlists":[]}' > data/playlists.json
 
       - name: Commit synced data
         run: |
