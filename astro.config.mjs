@@ -24,6 +24,7 @@ export default defineConfig({
         "@affiliate": fileURLToPath(
           new URL("./packages/affiliate-helper/js/affiliate-helper.js", import.meta.url)
         ),
+        "@data": fileURLToPath(new URL("./data", import.meta.url)),
       },
     },
   },
