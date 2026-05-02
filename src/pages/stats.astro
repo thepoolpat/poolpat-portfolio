@@ -57,9 +57,15 @@ const amSorted = sortedTracks(amTracks);
       return obj;
     });
 
-    const sc = rows.map(r => parseInt(r.soundcloud_total_plays) || 0);
-const sp = rows.map(r => parseInt(r.spotify_total_streams || r.spotify_total_popularity) || 0);
-const am = rows.map(r => parseInt(r.apple_music_total_plays) || 0);
+    // Clamp cumulative values — they should never decrease (guard against data corruption)
+    function clampCumulative(arr) {
+      let max = 0;
+      return arr.map(v => { max = Math.max(max, v); return max; });
+    }
+
+    const sc = clampCumulative(rows.map(r => parseInt(r.soundcloud_total_plays) || 0));
+    const sp = clampCumulative(rows.map(r => parseInt(r.spotify_total_streams || r.spotify_total_popularity) || 0));
+    const am = clampCumulative(rows.map(r => parseInt(r.apple_music_total_plays) || 0));
 
     const { Chart, registerables } = await import("https://cdn.jsdelivr.net/npm/chart.js@4/+esm");
     Chart.register(...registerables);
@@ -71,7 +77,7 @@ const am = rows.map(r => parseInt(r.apple_music_total_plays) || 0);
         datasets: [
            { 
              label: "SoundCloud", 
-             data: rows.map(r => parseInt(r.soundcloud_total_plays) || 0), 
+             data: sc, 
              borderColor: "#FF4000", 
              backgroundColor: "rgba(255, 64, 0, 0.15)", 
              fill: true, 
@@ -82,7 +88,7 @@ const am = rows.map(r => parseInt(r.apple_music_total_plays) || 0);
            },
            { 
              label: "Spotify", 
-             data: rows.map(r => parseInt(r.spotify_total_streams || r.spotify_total_popularity) || 0), 
+             data: sp, 
              borderColor: "#1DB954", 
              backgroundColor: "rgba(29, 185, 84, 0.15)", 
              fill: true, 
@@ -93,7 +99,7 @@ const am = rows.map(r => parseInt(r.apple_music_total_plays) || 0);
            },
            { 
              label: "Apple Music", 
-             data: rows.map(r => parseInt(r.apple_music_total_plays) || 0), 
+             data: am, 
              borderColor: "#FC3C44", 
              backgroundColor: "rgba(252, 60, 68, 0.15)", 
              fill: true, 
@@ -157,7 +163,6 @@ const am = rows.map(r => parseInt(r.apple_music_total_plays) || 0);
             ticks: { 
               color: "#98989d",
               callback: function(value, index, values) {
-                // Show ticks at 100K intervals for better readability
                 if (value === 0) return "0";
                 if (value <= 1000) return Math.round(value).toLocaleString();
                 if (value <= 100000) return (value / 1000).toFixed(0) + "K";
