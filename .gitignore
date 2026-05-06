@@ -6,7 +6,6 @@ dist/
 .env.*
 !.env.example
 .fetch_failures.json
-<<<<<<< Updated upstream
 *.p8
 *.pem
 *.key
@@ -19,11 +18,7 @@ pipeline/__pycache__/
 .Python
 *.egg-info/
 .eggs/
-
-# Test directories
-pipeline/tests/
-test_*.py
-*_test.py
+.pytest_cache/
 coverage/
 .coverage
 htmlcov/
@@ -36,6 +31,3 @@ htmlcov/
 camoufox/
 ~/.camoufox/
 *.camoufox
-=======
-.env
->>>>>>> Stashed changes
