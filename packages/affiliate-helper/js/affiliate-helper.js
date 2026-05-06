@@ -84,7 +84,7 @@ export function link({ storefront, type, slug, id, campaign }) {
 export function rewrite(urlString, { campaign }) {
   validateCt(campaign);
   const u = new URL(urlString);
-  if (!u.host.endsWith(HOST)) {
+  if (u.hostname !== HOST) {
     throw new AffiliateError(`URL host '${u.host}' is not music.apple.com`);
   }
   ["at", "app", "ct"].forEach((k) => u.searchParams.delete(k));
