@@ -1,27 +1,51 @@
 """
-fetch_playlists.py
+fetch_playlists.py — client_credentials variant (DRAFT)
 
-Discovers which Spotify playlists feature Poolpat tracks using:
-  1. Spotify Web API — get artist tracks, then search playlists by track name
-  2. Playlistcheck RapidAPI — enrich each playlist with follower count,
-     curator contact, and historical data
+Drop-in replacement for the existing fetch_playlists.py that authenticates
+to Spotify via the **client_credentials** OAuth grant instead of the
+refresh_token / PKCE flow.
 
-Outputs: data/playlists.json
+Why this exists
+---------------
+The PKCE refresh_token flow on poolpat-portfolio's Spotify app has been
+unreliable: minted tokens get revoked between local mint and CI use,
+likely due to concurrent grants (hermes_mcp/spotify.py MCP server,
+spotipy cache, multiple OAuth re-auths in short windows). Client
+credentials flow has no refresh_token, no rotation, no save-back, no
+$GITHUB_ENV juggling — every run mints its own short-lived access_token
+from CLIENT_ID + CLIENT_SECRET.
 
-Requires env vars:
-  SPOTIFY_CLIENT_ID, SPOTIFY_REFRESH_TOKEN
+Trade-off
+---------
+Client credentials only grants access to PUBLIC catalog endpoints
+(/artists, /albums, /tracks, /search, /playlists/<public_id>). It
+CANNOT read:
+  - User's private playlists
+  - User's saved tracks / library
+  - Top tracks / recently played
+  - Anything requiring a user-scoped token
+
+For *playlist discovery* this is fine: we search for tracks by name and
+hit Playlistcheck (RapidAPI) — both of those are public.
+
+Activation
+----------
+1.  mv pipeline/fetch_playlists.py pipeline/fetch_playlists_pkce.py.bak
+2.  mv pipeline/fetch_playlists_cc.py.draft pipeline/fetch_playlists.py
+3.  In .github/workflows/fetch-data.yml, the `Fetch playlist data` step
+    can drop SPOTIFY_REFRESH_TOKEN from its env (still needed by
+    fetch_plays' user-auth attempt, so keep at job level for now).
+    GH_PAT is no longer required for this script's path.
+
+Required env (unchanged from job-level)
+---------------------------------------
+  SPOTIFY_CLIENT_ID
+  SPOTIFY_CLIENT_SECRET   (was already in workflow env, just unused)
   RAPIDAPI_KEY
-
-Note: Uses PKCE refresh flow (no client_secret) matching spotify_auth.py.
-
-Playlistcheck API (RapidAPI):
-  Only endpoint: GET https://playlistcheck.p.rapidapi.com/playlist
-  Required param: playlist_id (Spotify playlist ID)
 """
 
 import json
 import os
-import subprocess
 import sys
 import time
 from datetime import datetime, timezone
@@ -29,101 +53,53 @@ from pathlib import Path
 
 import requests
 
-# ---------------------------------------------------------------------------
-# Load environment variables from .env.spotify
-# ---------------------------------------------------------------------------
-PIPE_DIR = Path(__file__).resolve().parent
-ENV_FILE = PIPE_DIR / ".env.spotify"
 
-if ENV_FILE.exists():
-    with open(ENV_FILE, 'r') as f:
-        for line in f:
-            line = line.strip()
-            if line and '=' in line:
-                key, value = line.split('=', 1)
-                value = value.strip('"\'')
-                os.environ[key] = value
-    print(f"✅ Loaded credentials from {ENV_FILE}")
-else:
-    print("⚠️ .env.spotify not found")
-
-# Config starts here
+SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
+SPOTIFY_API_BASE = "https://api.spotify.com/v1"
 ARTIST_ID = "4rr3o9anpUXitNXo0W4uX7"  # Poolpat
 OUTPUT_PATH = Path("data/playlists.json")
 PLAYLISTCHECK_URL = "https://playlistcheck.p.rapidapi.com/playlist"
-SPOTIFY_API_BASE = "https://api.spotify.com/v1"
-SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
-
-# Single canonical repo (poolpat-plays archived; portfolio is sole source of truth)
-SHARED_TOKEN_REPOS = [
-    "thepoolpat/poolpat-portfolio",
-]
 
 
 # ---------------------------------------------------------------------------
-# Spotify auth — PKCE refresh flow
+# Spotify auth — client_credentials (NO refresh_token, NO rotation)
 # ---------------------------------------------------------------------------
 def get_spotify_token() -> str:
-    client_id = os.environ["SPOTIFY_CLIENT_ID"].strip()
-    refresh_token = os.environ["SPOTIFY_REFRESH_TOKEN"].strip()
+    """Mint a fresh app-scoped access_token via client_credentials.
+
+    Returns just the access_token string. No refresh_token is involved
+    on this code path — every run gets a brand new short-lived token
+    (~1h) and discards it. No state to persist anywhere.
+    """
+    client_id = os.environ.get("SPOTIFY_CLIENT_ID", "").strip()
+    client_secret = os.environ.get("SPOTIFY_CLIENT_SECRET", "").strip()
+
+    if not client_id or not client_secret:
+        raise RuntimeError(
+            "SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET must both be set "
+            "for the client_credentials flow"
+        )
 
     resp = requests.post(
         SPOTIFY_TOKEN_URL,
-        data={
-            "grant_type": "refresh_token",
-            "refresh_token": refresh_token,
-            "client_id": client_id,
-        },
+        data={"grant_type": "client_credentials"},
+        auth=(client_id, client_secret),
         timeout=15,
     )
 
     if not resp.ok:
+        # NEVER include resp.text or auth in the error message — keep clean
         raise RuntimeError(
-            f"Spotify token refresh failed ({resp.status_code}): {resp.text}"
+            f"Spotify client_credentials auth failed ({resp.status_code})"
         )
 
-    data = resp.json()
-
-    # Auto-save rotated refresh token to ALL repos that share this token
-    new_refresh = data.get("refresh_token")
-    if new_refresh and new_refresh != refresh_token:
-        # 1) Register as masked FIRST — before any code path that could surface
-        #    the value (env file, exception messages, subprocess args, etc.)
-        print(f"::add-mask::{new_refresh}", flush=True)
-        sys.stdout.flush()
-        print("  ⚠ Spotify rotated refresh token — updating all repos...")
-        # 2) Propagate to subsequent steps in the same job
-        if gh_env := os.environ.get("GITHUB_ENV"):
-            try:
-                with open(gh_env, "a") as f:
-                    f.write(f"SPOTIFY_REFRESH_TOKEN={new_refresh}\n")
-            except OSError as e:
-                print(f"  ⚠ Could not write to $GITHUB_ENV: {e}", file=sys.stderr)
-        # 3) Persist to GH secrets so the value survives across runs.
-        #    Use check=False + returncode inspection so a failure NEVER prints
-        #    the subprocess args (which include --body <token>).
-        for repo in SHARED_TOKEN_REPOS:
-            result = subprocess.run(
-                ["gh", "secret", "set", "SPOTIFY_REFRESH_TOKEN",
-                 "--repo", repo, "--body", new_refresh],
-                capture_output=True, text=True,
-            )
-            if result.returncode == 0:
-                print(f"  ✅ {repo} SPOTIFY_REFRESH_TOKEN updated")
-            else:
-                print(
-                    f"  ⚠ Could not update {repo}: gh secret set "
-                    f"exited {result.returncode} (likely missing GH_PAT or insufficient scope)",
-                    file=sys.stderr,
-                )
-
-    return data["access_token"]
+    return resp.json()["access_token"]
 
 
 # ---------------------------------------------------------------------------
 # Spotify helpers
 # ---------------------------------------------------------------------------
-def spotify_get(path: str, token: str, params: dict = None) -> dict:
+def spotify_get(path: str, token: str, params: dict | None = None) -> dict:
     resp = requests.get(
         f"{SPOTIFY_API_BASE}{path}",
         headers={"Authorization": f"Bearer {token}"},
@@ -142,11 +118,10 @@ def spotify_get(path: str, token: str, params: dict = None) -> dict:
 def get_artist_tracks(token: str) -> list[dict]:
     """Returns deduplicated list of {id, name} for all tracks by Poolpat.
 
-    Uses only album,single groups — appears_on requires elevated user scopes
-    and causes 400 errors with PKCE tokens.
+    Uses album,single groups (no scope required for public artist data).
     """
-    tracks = []
-    # appears_on excluded: requires user-library scope, causes 400 with PKCE token
+    tracks: list[dict] = []
+    seen: set[str] = set()
     for group in ("album", "single"):
         try:
             resp = spotify_get(
@@ -155,158 +130,126 @@ def get_artist_tracks(token: str) -> list[dict]:
                 {"include_groups": group, "limit": 50, "market": "IE"},
             )
             for album in resp.get("items", []):
-                try:
-                    album_tracks = spotify_get(
-                        f"/albums/{album['id']}/tracks", token, {"limit": 50}
-                    )
-                    for t in album_tracks.get("items", []):
-                        if ARTIST_ID in [a["id"] for a in t.get("artists", [])]:
-                            tracks.append({"id": t["id"], "name": t["name"]})
-                except Exception as e:
-                    print(f"  Skipping album {album['id']}: {e}")
-        except Exception as e:
-            print(f"  Skipping group '{group}': {e}")
-
-    seen: set[str] = set()
-    unique = []
-    for t in tracks:
-        if t["id"] not in seen:
-            seen.add(t["id"])
-            unique.append(t)
-    return unique
+                tracks_resp = spotify_get(
+                    f"/albums/{album['id']}/tracks",
+                    token,
+                    {"limit": 50, "market": "IE"},
+                )
+                for t in tracks_resp.get("items", []):
+                    tid = t.get("id")
+                    if tid and tid not in seen:
+                        seen.add(tid)
+                        tracks.append({"id": tid, "name": t.get("name", "")})
+        except requests.HTTPError as e:
+            print(f"  ⚠ {group}: {e.response.status_code}", file=sys.stderr)
+            continue
+    return tracks
 
 
-def search_playlists_for_track(track_name: str, token: str) -> list[str]:
-    """Search Spotify for playlists by track name. Returns playlist IDs."""
+def find_playlists_for_track(track_id: str, track_name: str, token: str) -> list[dict]:
+    """Search Spotify for public playlists containing the track."""
     try:
-        results = spotify_get(
-            "/search", token,
+        resp = spotify_get(
+            "/search",
+            token,
             {"q": track_name, "type": "playlist", "limit": 20, "market": "IE"},
         )
-        items = results.get("playlists", {}).get("items") or []
-        return [p["id"] for p in items if p and p.get("id")]
-    except Exception as e:
-        print(f"  Search failed for '{track_name}': {e}")
+    except requests.HTTPError as e:
+        print(f"  ⚠ search '{track_name[:40]}': {e.response.status_code}", file=sys.stderr)
         return []
-
-
-def search_playlists_for_artist(token: str) -> list[str]:
-    """Search Spotify for playlists by artist name. Returns playlist IDs."""
-    try:
-        results = spotify_get(
-            "/search", token,
-            {"q": "Poolpat", "type": "playlist", "limit": 20, "market": "IE"},
+    found = []
+    for pl in resp.get("playlists", {}).get("items", []) or []:
+        if not pl:
+            continue
+        found.append(
+            {
+                "playlist_id": pl.get("id"),
+                "name": pl.get("name"),
+                "spotify_url": (pl.get("external_urls") or {}).get("spotify"),
+                "owner": (pl.get("owner") or {}).get("display_name"),
+                "track_id": track_id,
+                "track_name": track_name,
+            }
         )
-        items = results.get("playlists", {}).get("items") or []
-        return [p["id"] for p in items if p and p.get("id")]
-    except Exception as e:
-        print(f"  Artist playlist search failed: {e}")
-        return []
+    return found
 
 
 # ---------------------------------------------------------------------------
-# Playlistcheck RapidAPI
+# Playlistcheck (RapidAPI) — public catalogue, public stats
 # ---------------------------------------------------------------------------
-def enrich_playlist(playlist_id: str) -> dict | None:
-    """Fetch enriched playlist data from Playlistcheck. Returns None on any error."""
+def enrich_with_playlistcheck(playlist_id: str, rapidapi_key: str) -> dict:
     try:
         resp = requests.get(
             PLAYLISTCHECK_URL,
             headers={
                 "x-rapidapi-host": "playlistcheck.p.rapidapi.com",
-                "x-rapidapi-key": os.environ["RAPIDAPI_KEY"],
+                "x-rapidapi-key": rapidapi_key,
             },
             params={"playlist_id": playlist_id},
-            timeout=20,
+            timeout=15,
         )
-        if resp.status_code == 429:
-            retry_after = int(resp.headers.get("Retry-After", 10))
-            print(f"  Rate limit — sleeping {retry_after}s")
-            time.sleep(retry_after)
-            return enrich_playlist(playlist_id)
-        if resp.status_code in (404, 422):
-            return None
-        resp.raise_for_status()
-        return resp.json()
-    except Exception as e:
-        print(f"  Playlistcheck error for {playlist_id}: {e}")
-        return None
+        if resp.status_code == 200:
+            return resp.json()
+    except Exception:
+        pass
+    return {}
 
 
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-def main():
-    if not os.environ.get("RAPIDAPI_KEY"):
-        print("WARNING: RAPIDAPI_KEY not set — skipping playlist fetch")
-        OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-        if not OUTPUT_PATH.exists():
-            OUTPUT_PATH.write_text(json.dumps({
-                "artist_id": ARTIST_ID, "artist_name": "Poolpat",
-                "fetched_at": datetime.now(timezone.utc).isoformat(),
-                "total_playlists": 0, "playlists": []
-            }, indent=2))
-        sys.exit(0)
+def main() -> None:
+    print("=== Poolpat Playlist Tracker (client_credentials) ===\n")
 
-    print("=== Poolpat Playlist Tracker ===")
+    rapidapi_key = os.environ.get("RAPIDAPI_KEY", "").strip()
+    if not rapidapi_key:
+        print("⚠ RAPIDAPI_KEY not set — playlist enrichment will be skipped")
 
-    print("\n[1/4] Authenticating with Spotify...")
+    print("[1/4] Authenticating with Spotify (client_credentials)...")
     token = get_spotify_token()
-    print("  OK")
+    print("  ✅ access_token obtained")
 
-    print("\n[2/4] Fetching artist tracks...")
-    tracks = get_artist_tracks(token)
-    print(f"  Found {len(tracks)} tracks")
+    print("[2/4] Fetching artist track catalogue...")
+    artist_tracks = get_artist_tracks(token)
+    print(f"  ✅ {len(artist_tracks)} unique tracks")
 
-    print("\n[3/4] Searching for playlists...")
-    playlist_ids: set[str] = set()
+    print("[3/4] Searching Spotify for playlists containing each track...")
+    all_placements: dict[str, dict] = {}
+    for t in artist_tracks:
+        for p in find_playlists_for_track(t["id"], t["name"], token):
+            pid = p["playlist_id"]
+            if not pid:
+                continue
+            if pid not in all_placements:
+                all_placements[pid] = {**p, "tracks_matched": [t["name"]]}
+            else:
+                all_placements[pid]["tracks_matched"].append(t["name"])
 
-    for pid in search_playlists_for_artist(token):
-        playlist_ids.add(pid)
-    print(f"  Artist name search: {len(playlist_ids)} playlists")
+    playlists = list(all_placements.values())
+    print(f"  ✅ {len(playlists)} unique playlists matched")
 
-    for track in tracks:
-        for pid in search_playlists_for_track(track["name"], token):
-            playlist_ids.add(pid)
-        time.sleep(0.25)
-    print(f"  Total unique playlist IDs: {len(playlist_ids)}")
-
-    print("\n[4/4] Enriching via Playlistcheck...")
-    enriched = []
-    for i, pid in enumerate(sorted(playlist_ids), 1):
-        print(f"  [{i}/{len(playlist_ids)}] {pid}")
-        data = enrich_playlist(pid)
-        if data:
-            enriched.append({
-                "playlist_id": pid,
-                "name": data.get("name") or data.get("playlist_name", ""),
-                "followers": data.get("followers") or data.get("follower_count", 0),
-                "curator": data.get("curator") or data.get("owner", ""),
-                "curator_email": data.get("curator_email") or data.get("email", ""),
-                "spotify_url": f"https://open.spotify.com/playlist/{pid}",
-                "track_count": data.get("track_count") or data.get("tracks", 0),
-                "last_updated": data.get("last_updated", ""),
-            })
-        time.sleep(0.5)
-
-    enriched.sort(key=lambda x: x.get("followers") or 0, reverse=True)
+    if rapidapi_key and playlists:
+        print(f"[4/4] Enriching {len(playlists)} playlists with Playlistcheck...")
+        enriched: list[dict] = []
+        for i, p in enumerate(playlists, 1):
+            data = enrich_with_playlistcheck(p["playlist_id"], rapidapi_key)
+            enriched.append({**p, **data})
+            if i % 10 == 0:
+                print(f"  {i}/{len(playlists)}")
+        playlists = enriched
+    else:
+        print("[4/4] Skipping enrichment (no RAPIDAPI_KEY or no playlists)")
 
     output = {
-        "artist_id": ARTIST_ID,
-        "artist_name": "Poolpat",
         "fetched_at": datetime.now(timezone.utc).isoformat(),
-        "total_playlists": len(enriched),
-        "playlists": enriched,
+        "artist_id": ARTIST_ID,
+        "auth_method": "client_credentials",
+        "playlists": playlists,
     }
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_PATH.write_text(json.dumps(output, indent=2, ensure_ascii=False))
-
-    total_reach = sum(p.get("followers") or 0 for p in enriched)
-    print(f"\n\u2705 {len(enriched)} playlists enriched \u2192 {OUTPUT_PATH}")
-    print(f"   Total reach: {total_reach:,} followers")
-    if enriched:
-        print(f"   Top: {enriched[0]['name']} ({enriched[0].get('followers', 0):,} followers)")
+    print(f"\n✅ {len(playlists)} playlists → {OUTPUT_PATH}")
 
 
 if __name__ == "__main__":
