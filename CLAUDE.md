@@ -1,6 +1,8 @@
 # CLAUDE.md
 
-Guidance for Claude Code when working in this repo.
+Guidance for Claude Code when working in this repo. For human developer
+setup notes (Spotify/Apple Music auth, Discord webhook, local pipeline runs)
+see [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md).
 
 ## What this is
 
