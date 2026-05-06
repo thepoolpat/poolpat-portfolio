@@ -90,6 +90,11 @@ const playlistFetchedAt = playlistsData.fetched_at
         return arr.map(v => { max = Math.max(max, v); return max; });
       }
 
+      function nullifyZeros(arr) {
+        // Log-scale rendering needs >0 values; let Chart.js skip the rest.
+        return arr.map(v => v > 0 ? v : null);
+      }
+
       const encoded = dataEl?.dataset?.history || "";
       const raw = decodeURIComponent(encoded);
       const rows = parseCsv(raw);
@@ -107,9 +112,9 @@ const playlistFetchedAt = playlistsData.fetched_at
         return isNaN(d) ? r.timestamp : d.toLocaleDateString("en-IE", { month: "short", day: "numeric", year: "numeric" });
       });
 
-      const sc = clamp(rows.map(r => toInt(r.soundcloud_total_plays)));
-      const sp = clamp(rows.map(r => toInt(r.spotify_total_streams || r.spotify_total_popularity)));
-      const am = clamp(rows.map(r => toInt(r.apple_music_total_plays)));
+      const sc = nullifyZeros(clamp(rows.map(r => toInt(r.soundcloud_total_plays))));
+      const sp = nullifyZeros(clamp(rows.map(r => toInt(r.spotify_total_streams || r.spotify_total_popularity))));
+      const am = nullifyZeros(clamp(rows.map(r => toInt(r.apple_music_total_plays))));
 
       const { Chart, registerables } = await import("https://cdn.jsdelivr.net/npm/chart.js@4/+esm");
       Chart.register(...registerables);
@@ -128,7 +133,9 @@ const playlistFetchedAt = playlistsData.fetched_at
               tension: 0.4,
               borderWidth: 3,
               pointRadius: 0,
-              pointHitRadius: 10
+              pointHitRadius: 10,
+              cubicInterpolationMode: "monotone",
+              spanGaps: true
             },
             {
               label: "Spotify",
@@ -139,7 +146,9 @@ const playlistFetchedAt = playlistsData.fetched_at
               tension: 0.4,
               borderWidth: 3,
               pointRadius: 0,
-              pointHitRadius: 10
+              pointHitRadius: 10,
+              cubicInterpolationMode: "monotone",
+              spanGaps: true
             },
             {
               label: "Apple Music",
@@ -150,7 +159,9 @@ const playlistFetchedAt = playlistsData.fetched_at
               tension: 0.4,
               borderWidth: 3,
               pointRadius: 0,
-              pointHitRadius: 10
+              pointHitRadius: 10,
+              cubicInterpolationMode: "monotone",
+              spanGaps: true
             }
           ]
         },
@@ -187,19 +198,21 @@ const playlistFetchedAt = playlistsData.fetched_at
               title: { display: true, text: "Timeline", color: "#98989d", font: { size: 14, weight: "bold" } }
             },
             y: {
-              type: "linear",
-              beginAtZero: true,
+              type: "logarithmic",
+              min: 1000,
               ticks: {
                 color: "#98989d",
+                // Only label decade values to declutter the log axis
                 callback(value) {
-                  if (value === 0) return "0";
+                  const log = Math.log10(value);
+                  if (Math.abs(log - Math.round(log)) > 1e-9) return null;
                   if (value < 1000) return Math.round(value).toLocaleString();
                   if (value < 1000000) return (value / 1000).toFixed(0) + "K";
                   return (value / 1000000).toFixed(1) + "M";
                 }
               },
               grid: { color: "rgba(240,240,245,0.08)" },
-              title: { display: true, text: "Cumulative Plays", color: "#98989d", font: { size: 14, weight: "bold" } }
+              title: { display: true, text: "Cumulative Plays (log scale)", color: "#98989d", font: { size: 14, weight: "bold" } }
             }
           },
           elements: { line: { tension: 0.4, borderWidth: 3 }, point: { radius: 0, hitRadius: 10 } },
