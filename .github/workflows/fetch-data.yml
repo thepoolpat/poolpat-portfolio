@@ -1,0 +1,91 @@
+name: Fetch Data (weekly)
+
+# Combined replacement for fetch-plays.yml + fetch-playlists.yml.
+# Runs both fetchers sequentially in one job to avoid the SPOTIFY_REFRESH_TOKEN
+# rotation race that hit when they were two separate workflows 30 min apart.
+
+on:
+  schedule:
+    - cron: "0 6 * * 0"   # Sundays 06:00 UTC
+  workflow_dispatch: {}
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: spotify-fetch
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+
+    # Shared env at job level — step-level env would shadow $GITHUB_ENV
+    # writes from earlier steps and break in-process token rotation.
+    env:
+      SPOTIFY_CLIENT_ID:     ${{ secrets.SPOTIFY_CLIENT_ID }}
+      SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+      SPOTIFY_REFRESH_TOKEN: ${{ secrets.SPOTIFY_REFRESH_TOKEN }}
+      GH_TOKEN:              ${{ secrets.GH_PAT }}
+      GITHUB_REPOSITORY:     ${{ github.repository }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pipeline/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r pipeline/requirements.txt
+
+      - name: Fetch play counts
+        id: fetch_plays
+        continue-on-error: true
+        env:
+          APPLE_MUSIC_TOKEN: ${{ secrets.APPLE_MUSIC_TOKEN }}
+        run: python pipeline/fetch_plays.py
+
+      - name: Fetch playlist data
+        id: fetch_playlists
+        continue-on-error: true
+        env:
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
+        run: python pipeline/fetch_playlists.py
+
+      - name: Commit data updates
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          if git diff --cached --quiet; then
+            echo "no data changes to commit"
+          else
+            git commit -m "data: weekly update $(date -u +%Y-%m-%d)"
+            git push
+          fi
+
+      - name: Run summary
+        if: always()
+        env:
+          PLAYS_OUTCOME: ${{ steps.fetch_plays.outcome }}
+          PLAYLISTS_OUTCOME: ${{ steps.fetch_playlists.outcome }}
+        run: |
+          echo "fetch_plays:     $PLAYS_OUTCOME"
+          echo "fetch_playlists: $PLAYLISTS_OUTCOME"
+          if [ "$PLAYS_OUTCOME" = "failure" ] && [ "$PLAYLISTS_OUTCOME" = "failure" ]; then
+            echo "::error::Both fetches failed — likely a credential issue (Spotify revoked?)"
+            exit 1
+          elif [ "$PLAYS_OUTCOME" = "failure" ] || [ "$PLAYLISTS_OUTCOME" = "failure" ]; then
+            echo "::warning::Partial failure — plays=$PLAYS_OUTCOME playlists=$PLAYLISTS_OUTCOME"
+          else
+            echo "Both fetches succeeded"
+          fi
