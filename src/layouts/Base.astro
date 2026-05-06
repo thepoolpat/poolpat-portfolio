@@ -37,7 +37,13 @@ const developerToken = import.meta.env.MUSICKIT_DEVELOPER_TOKEN ?? "";
   />
   <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}favicon.svg`} />
   {developerToken && (
-    <script src="https://js-cdn.music.apple.com/musickit/v3/musickit.js" data-web-components async></script>
+    <script
+      src="https://js-cdn.music.apple.com/musickit/v3/musickit.js"
+      integrity="sha384-P9rZEwFDysMpb6eyJui9TfC88AoAPDelBRR7EdZEmimWpQ3Auy8uhmqcTUeeXrJR"
+      crossorigin="anonymous"
+      data-web-components
+      async
+    ></script>
   )}
 </head>
 <body>
