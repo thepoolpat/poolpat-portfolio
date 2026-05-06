@@ -1,7 +1,6 @@
 {
+  "fetched_at": "2026-05-06T02:19:39.890973+00:00",
   "artist_id": "4rr3o9anpUXitNXo0W4uX7",
-  "artist_name": "Poolpat",
-  "fetched_at": "2026-05-06T02:15:38.085456+00:00",
-  "total_playlists": 0,
+  "auth_method": "client_credentials",
   "playlists": []
 }
