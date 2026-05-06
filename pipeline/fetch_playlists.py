@@ -87,26 +87,35 @@ def get_spotify_token() -> str:
     # Auto-save rotated refresh token to ALL repos that share this token
     new_refresh = data.get("refresh_token")
     if new_refresh and new_refresh != refresh_token:
+        # 1) Register as masked FIRST — before any code path that could surface
+        #    the value (env file, exception messages, subprocess args, etc.)
+        print(f"::add-mask::{new_refresh}", flush=True)
+        sys.stdout.flush()
         print("  ⚠ Spotify rotated refresh token — updating all repos...")
-        for repo in SHARED_TOKEN_REPOS:
-            try:
-                subprocess.run(
-                    ["gh", "secret", "set", "SPOTIFY_REFRESH_TOKEN",
-                     "--repo", repo, "--body", new_refresh],
-                    check=True, capture_output=True,
-                )
-                print(f"  ✅ {repo} SPOTIFY_REFRESH_TOKEN updated")
-            except Exception as e:
-                print(f"  ⚠ Could not update {repo}: {e}", file=sys.stderr)
+        # 2) Propagate to subsequent steps in the same job
         if gh_env := os.environ.get("GITHUB_ENV"):
-            # Register as masked BEFORE writing to GITHUB_ENV — otherwise the
-            # token leaks into subsequent steps' env block in the runner log.
-            print(f"::add-mask::{new_refresh}")
             try:
                 with open(gh_env, "a") as f:
                     f.write(f"SPOTIFY_REFRESH_TOKEN={new_refresh}\n")
             except OSError as e:
                 print(f"  ⚠ Could not write to $GITHUB_ENV: {e}", file=sys.stderr)
+        # 3) Persist to GH secrets so the value survives across runs.
+        #    Use check=False + returncode inspection so a failure NEVER prints
+        #    the subprocess args (which include --body <token>).
+        for repo in SHARED_TOKEN_REPOS:
+            result = subprocess.run(
+                ["gh", "secret", "set", "SPOTIFY_REFRESH_TOKEN",
+                 "--repo", repo, "--body", new_refresh],
+                capture_output=True, text=True,
+            )
+            if result.returncode == 0:
+                print(f"  ✅ {repo} SPOTIFY_REFRESH_TOKEN updated")
+            else:
+                print(
+                    f"  ⚠ Could not update {repo}: gh secret set "
+                    f"exited {result.returncode} (likely missing GH_PAT or insufficient scope)",
+                    file=sys.stderr,
+                )
 
     return data["access_token"]
 
