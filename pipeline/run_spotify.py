@@ -1,11 +1,9 @@
-#!/opt/homebrew/bin/python3
-"""Wrapper to run Spotify logger with correct Python path"""
+#!/usr/bin/env python3
+"""Wrapper to run Spotify logger with correct Python path."""
 import subprocess
 import sys
+from pathlib import Path
 
-result = subprocess.run([
-    "/opt/homebrew/bin/python3",
-    "/Users/mortymcfly/poolpat-portfolio/pipeline/spotify_discord_analytics.py"
-])
-
+target = Path(__file__).resolve().parent / "spotify_discord_analytics.py"
+result = subprocess.run([sys.executable, str(target)])
 sys.exit(result.returncode)

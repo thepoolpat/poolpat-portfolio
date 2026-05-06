@@ -8,13 +8,38 @@ import playsRaw from "@data/plays.json";
 
 const data = playsRaw as any;
 const base = import.meta.env.BASE_URL;
+const site = import.meta.env.SITE ?? "https://thepoolpat.github.io";
 const art = (r: any) => `${base}${r.artwork}`;
 const scTotal = data.soundcloud?.total_plays_all_platforms || data.soundcloud?.total_plays || 0;
 const spTotal = data.spotify?.total_streams || 0;
 const amTotal = data.apple_music?.total_plays || 0;
 const grandTotal = scTotal + spTotal + amTotal;
+
+const artistJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "MusicGroup",
+  "@id": `${site}${base}#artist`,
+  name: "Poolpat",
+  url: `${site}${base}`,
+  image: `${site}${base}artwork/artist-banner.png`,
+  genre: "Hip-Hop",
+  foundingLocation: { "@type": "Place", name: "Cork, Ireland" },
+  sameAs: [
+    "https://music.apple.com/ie/artist/poolpat/1716939831",
+    "https://open.spotify.com/artist/4rr3o9anpUXitNXo0W4uX7",
+    "https://soundcloud.com/poolpat",
+    "https://www.instagram.com/poolpat_shanakee/",
+    "https://www.youtube.com/@Poolpat",
+    "https://www.tiktok.com/@poolpat_shanakee",
+    "https://ffm.bio/poolpat",
+  ],
+};
 ---
-<Base title="Poolpat — Cork Hip-Hop" description="Poolpat — Cork hip-hop artist. Live play stats, full discography, and liner notes across SoundCloud, Spotify, and Apple Music.">
+<Base
+  title="Poolpat — Cork Hip-Hop"
+  description="Poolpat — Cork hip-hop artist. Live play stats, full discography, and liner notes across SoundCloud, Spotify, and Apple Music."
+  structuredData={artistJsonLd}
+>
 
   <!-- Artist Header -->
   <header class="artist-header">

@@ -14,8 +14,37 @@ export function getStaticPaths() {
 const { release } = Astro.props;
 const r = release;
 const base = import.meta.env.BASE_URL;
+const site = import.meta.env.SITE ?? "https://thepoolpat.github.io";
 const artUrl = `${base}${r.artwork}`;
 const safeCredits = r.credits?.replace(/<(?!\/?(?:strong|em|br)\b)[^>]*>/gi, "") ?? "";
+
+function toIsoDuration(d?: string): string | undefined {
+  if (!d) return undefined;
+  const parts = d.split(":").map((n) => parseInt(n, 10));
+  if (parts.some(Number.isNaN)) return undefined;
+  let h = 0, m = 0, s = 0;
+  if (parts.length === 3) [h, m, s] = parts;
+  else if (parts.length === 2) [m, s] = parts;
+  else return undefined;
+  return `PT${h ? `${h}H` : ""}${m}M${s}S`;
+}
+
+const albumJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "MusicAlbum",
+  name: r.title,
+  byArtist: { "@id": `${site}${base}#artist` },
+  url: `${site}${base}releases/${r.slug}/`,
+  image: `${site}${artUrl}`,
+  ...(r.releaseDate ? { datePublished: r.releaseDate } : {}),
+  numTracks: r.tracks?.length,
+  track: r.tracks?.map((t: any, i: number) => ({
+    "@type": "MusicRecording",
+    position: i + 1,
+    name: t.title,
+    ...(toIsoDuration(t.duration) ? { duration: toIsoDuration(t.duration) } : {}),
+  })),
+};
 ---
 <Base
   title={`${r.title} — Poolpat`}
@@ -23,6 +52,7 @@ const safeCredits = r.credits?.replace(/<(?!\/?(?:strong|em|br)\b)[^>]*>/gi, "")
   ogImage={artUrl}
   ogType="music.album"
   canonicalPath={`/releases/${r.slug}/`}
+  structuredData={albumJsonLd}
 >
   <a href={`${base}discography/`} class="muted" style="font-size:.9rem">&larr; All releases</a>
 

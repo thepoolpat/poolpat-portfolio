@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://thepoolpat.github.io/poolpat-portfolio/sitemap-index.xml

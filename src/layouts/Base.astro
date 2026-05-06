@@ -8,6 +8,7 @@ interface Props {
   ogImage?: string;
   ogType?: "website" | "music.album" | "music.song";
   canonicalPath?: string;
+  structuredData?: object;
 }
 const {
   title,
@@ -15,6 +16,7 @@ const {
   ogImage,
   ogType = "website",
   canonicalPath,
+  structuredData,
 } = Astro.props;
 
 const siteUrl = import.meta.env.SITE ?? "https://thepoolpat.github.io";
@@ -34,6 +36,7 @@ const developerToken = import.meta.env.MUSICKIT_DEVELOPER_TOKEN ?? "";
     ogImage={ogImage}
     ogType={ogType}
     canonicalUrl={canonical}
+    structuredData={structuredData}
   />
   <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}favicon.svg`} />
   {developerToken && (

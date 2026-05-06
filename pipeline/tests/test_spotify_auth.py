@@ -58,8 +58,10 @@ class TestRefreshAccessToken(unittest.TestCase):
         self.assertEqual(call_data["client_id"], "client_id")
         self.assertEqual(call_data["refresh_token"], "refresh_tok")
 
+    @patch.dict(os.environ, {}, clear=True)
+    @patch("spotify_auth.subprocess.run")
     @patch("spotify_auth.requests.post")
-    def test_token_rotation_warning(self, mock_post):
+    def test_token_rotation_warning(self, mock_post, mock_run):
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
@@ -69,9 +71,32 @@ class TestRefreshAccessToken(unittest.TestCase):
         }
         mock_resp.raise_for_status = MagicMock()
         mock_post.return_value = mock_resp
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
 
         result = refresh_access_token("client_id", "old_refresh")
         self.assertEqual(result["refresh_token"], "new_refresh")
+
+        # Rotation must shell out to `gh secret set` — verify without leaking
+        # the new token through assertion error messages.
+        self.assertEqual(mock_run.call_count, 1)
+        args = mock_run.call_args[0][0]
+        self.assertEqual(args[:4], ["gh", "secret", "set", "SPOTIFY_REFRESH_TOKEN"])
+
+    @patch.dict(os.environ, {}, clear=True)
+    @patch("spotify_auth.subprocess.run")
+    @patch("spotify_auth.requests.post")
+    def test_no_rotation_skips_gh_secret_set(self, mock_post, mock_run):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "access_token": "new_access",
+            "expires_in": 3600,
+        }
+        mock_resp.raise_for_status = MagicMock()
+        mock_post.return_value = mock_resp
+
+        refresh_access_token("client_id", "same_refresh")
+        mock_run.assert_not_called()
 
 
 if __name__ == "__main__":
