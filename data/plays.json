@@ -1,6 +1,6 @@
 {
   "artist": "Poolpat",
-  "last_updated": "2026-05-06T00:55:00+00:00",
+  "last_updated": "2026-05-06T01:20:06.026936+00:00",
   "soundcloud": {
     "url": "https://soundcloud.com/poolpat",
     "tracks": {
@@ -50,13 +50,12 @@
       "Schneck De Traître X L.Stoch": 775,
       "Déjà 30 Piges (feat. Djar One & Jaws) [Remix]": 1354
     },
-    "total_plays": 28323,
+    "total_plays": 29125,
     "total_tracks": 46,
     "followers": 128,
     "fetch_status": "success",
-    "last_successful_fetch": "2026-05-06T00:55:00+00:00",
+    "last_successful_fetch": "2026-05-06T01:20:08.872636+00:00",
     "total_plays_all_platforms": 28323,
-    "total_plays_all_time": 28323,
     "total_streams_sc": 18635,
     "total_downloads": 3690,
     "source": "SoundCloud Insights (All Platforms, All Time, 2016-Present)"
@@ -89,7 +88,7 @@
     "total_tracks": 18,
     "monthly_listeners": 14,
     "streams_28d": 26,
-    "fetch_status": "manual_update",
+    "fetch_status": "failed",
     "last_successful_fetch": "2026-05-06T00:55:00+00:00",
     "auth_method": "user_token",
     "note": "total_streams/monthly_listeners from Spotify for Artists (manual). Track values are popularity scores.",
