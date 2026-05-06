@@ -139,7 +139,7 @@ analytics.log_playback()
 
 ### `.env.spotify`
 ```
-SPOTIFY_CLIENT_ID=88d1cb87aba74f809133542879d8885c
+SPOTIFY_CLIENT_ID=<your-spotify-client-id>
 SPOTIFY_REDIRECT_URI=http://127.0.0.1:8888/callback
 SPOTIFY_API_BASE_URL=https://api.spotify.com/v1
 SPOTIFY_ACCESS_TOKEN=[auto-refreshed]
@@ -158,7 +158,7 @@ DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
     "enabled": true,
     "base_url": "http://127.0.0.1:8888",
     "spotify_integration": {
-      "client_id": "88d1cb87aba74f809133542879d8885c",
+      "client_id": "<your-spotify-client-id>",
       "redirect_uri": "http://127.0.0.1:8888/callback",
       "auto_refresh": true,
       "device_poll_interval_ms": 5000
