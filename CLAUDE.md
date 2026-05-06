@@ -1,0 +1,77 @@
+# CLAUDE.md
+
+Guidance for Claude Code when working in this repo.
+
+## What this is
+
+Astro 6 static site (artist portfolio) + Python data pipeline that fetches play
+counts from SoundCloud, Spotify, and Apple Music. Data lives in `data/` and is
+auto-committed by the weekly `fetch-data.yml` workflow.
+
+## Layout
+
+- `src/` — Astro pages, layouts, components, styles
+- `pipeline/` — Python fetchers and Spotify API client
+  - `fetch_plays.py` — multi-platform scraper, enforces monotonic invariant
+  - `fetch_playlists.py` — client_credentials flow for public catalog data
+  - `spotify_client.py` — typed API client with retry + auto-refresh
+  - `spotify_auth.py` — PKCE OAuth flow + refresh-token rotation handling
+  - `spotify_errors.py` — typed exception hierarchy
+  - `tests/` — pytest suite (currently 20 tests across 3 modules)
+- `packages/affiliate-helper/js/` — Apple Music affiliate link builder (untested)
+- `.github/workflows/` — `deploy.yml` (Pages), `fetch-data.yml` (weekly cron),
+  `codeql.yml`. No test workflow exists.
+
+## Commands
+
+```bash
+npm run dev                                # Astro dev server
+npm run build                              # Astro build (DEPLOY_TARGET=public for Pages)
+npm run check                              # astro check (TypeScript)
+
+cd pipeline && python -m pytest tests/ -v  # Run Python tests
+pip install -r pipeline/requirements.txt   # Pipeline runtime deps
+pip install pytest                         # Test dep (in [project.optional-dependencies].dev)
+```
+
+## Critical invariant
+
+`fetch_plays.monotonic_merge_tracks` must never let a play count decrease.
+If a fetch returns a lower number (API hiccup, missing data), the *existing*
+value wins. Any change to the merge logic needs tests covering: missing keys,
+zero values, partial responses, and new tracks in the fetched set.
+
+## Test status (as of branch claude/review-tests-update-docs-4Lcr3)
+
+19 passing, 1 failing. The failing test
+`test_spotify_auth.py::TestRefreshAccessToken::test_token_rotation_warning`
+does not mock `subprocess.run`, so `spotify_auth.refresh_access_token` shells
+out to the real `gh` CLI during the rotation path and fails wherever `gh` is
+absent. Fix: patch `subprocess.run` (and clear `GITHUB_ENV`) in that test.
+
+## Known test gaps
+
+These modules currently have no tests — prioritize them when adding coverage:
+
+- `fetch_plays.py` (693 lines, including the monotonic invariant)
+- `fetch_playlists.py` (client_credentials flow)
+- `spotify_client.SpotifyClient._refresh()` (401 → refresh → retry path)
+- `spotify_discord_analytics.py`, `spotify_enhanced_analytics.py`
+- `packages/affiliate-helper/js/affiliate-helper.js` (no JS test runner set up)
+
+No CI runs the test suite. Adding a `tests.yml` workflow that runs pytest on
+push/PR would catch regressions before merge.
+
+## Conventions
+
+- Python: stdlib + `requests` + `beautifulsoup4` + `defusedxml`. No frameworks.
+- Pipeline modules import each other by flat name (`from spotify_errors import ...`),
+  so tests prepend `pipeline/` to `sys.path` rather than installing as a package.
+- Secrets: `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REFRESH_TOKEN`,
+  optional `APPLE_MUSIC_TOKEN`, `RAPIDAPI_KEY`. Never commit; never log.
+- Refresh-token rotation: when Spotify returns a new `refresh_token`, the auth
+  module masks it via `::add-mask::`, writes to `$GITHUB_ENV`, and `gh secret set`s
+  it back. Anything mocking this path must mock all three side effects.
+- Workflow concurrency: `fetch-data.yml` uses `concurrency: spotify-fetch` to
+  serialize runs and avoid the refresh-token race that hit when plays/playlists
+  ran in separate workflows.
