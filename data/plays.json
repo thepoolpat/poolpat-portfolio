@@ -50,13 +50,13 @@
       "Schneck De Traître X L.Stoch": 775,
       "Déjà 30 Piges (feat. Djar One & Jaws) [Remix]": 1354
     },
-    "total_plays": 51800,
+    "total_plays": 28323,
     "total_tracks": 46,
     "followers": 128,
     "fetch_status": "success",
     "last_successful_fetch": "2026-05-06T00:55:00+00:00",
-    "total_plays_all_platforms": 51800,
-    "total_listeners": 28323,
+    "total_plays_all_platforms": 28323,
+    "total_plays_all_time": 28323,
     "total_streams_sc": 18635,
     "total_downloads": 3690,
     "source": "SoundCloud Insights (All Platforms, All Time, 2016-Present)"
