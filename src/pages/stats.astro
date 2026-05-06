@@ -63,6 +63,12 @@ const playlistFetchedAt = playlistsData.fetched_at
     </div>
   </section>
 
+  <!-- Pinned + SRI-locked Chart.js (UMD, exposes window.Chart). Hash is for chart.js@4.5.0/dist/chart.umd.min.js -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js"
+    integrity="sha384-XcdcwHqIPULERb2yDEM4R0XaQKU3YnDsrTmjACBZyfdVVqjh6xQ4/DCMd7XLcA6Y"
+    crossorigin="anonymous"
+  ></script>
   <script type="module">
     (async () => {
       const dataEl = document.getElementById("chart-data");
@@ -116,8 +122,22 @@ const playlistFetchedAt = playlistsData.fetched_at
       const sp = nullifyZeros(clamp(rows.map(r => toInt(r.spotify_total_streams || r.spotify_total_popularity))));
       const am = nullifyZeros(clamp(rows.map(r => toInt(r.apple_music_total_plays))));
 
-      const { Chart, registerables } = await import("https://cdn.jsdelivr.net/npm/chart.js@4/+esm");
-      Chart.register(...registerables);
+      // Chart.js loaded via SRI-locked UMD <script> above; wait for the global.
+      await new Promise((resolve) => {
+        if (typeof window !== "undefined" && window.Chart) return resolve();
+        const start = Date.now();
+        const tick = setInterval(() => {
+          if (typeof window !== "undefined" && window.Chart) {
+            clearInterval(tick);
+            resolve();
+          } else if (Date.now() - start > 10000) {
+            clearInterval(tick);
+            resolve(); // bail; new Chart() below will throw a clear error
+          }
+        }, 30);
+      });
+      const Chart = window.Chart;
+      // UMD bundle auto-registers all controllers/scales — no Chart.register() needed.
 
       new Chart(canvas, {
         type: "line",
