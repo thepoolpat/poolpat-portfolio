@@ -260,4 +260,3 @@ This repo unifies two earlier projects:
 - **Spotify API client:** spotipy with PKCE OAuth 2.0
 - **SQLite logging:** `~/spotty_logs/logs.db`
 - **Local-first design:** All play data captured locally before repo sync
-- **MIT License:** Copyright Poolpat, 2026 — provides legal permission for use, modification, and distribution

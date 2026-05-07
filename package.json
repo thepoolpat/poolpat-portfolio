@@ -15,7 +15,6 @@
     "url": "https://github.com/thepoolpat/poolpat-portfolio.git"
   },
   "author": "Poolpat",
-  "license": "MIT",
   "dependencies": {
     "@astrojs/check": "^0.9.8",
     "@astrojs/sitemap": "^3.7.2",
