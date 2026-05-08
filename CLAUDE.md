@@ -19,10 +19,11 @@ auto-committed by the weekly `fetch-data.yml` workflow.
   - `spotify_client.py` — typed API client with retry + auto-refresh
   - `spotify_auth.py` — PKCE OAuth flow + refresh-token rotation handling
   - `spotify_errors.py` — typed exception hierarchy
-  - `tests/` — pytest suite (44 tests across 4 modules)
-- `packages/affiliate-helper/js/` — Apple Music affiliate link builder (untested)
+  - `tests/` — pytest suite (105 tests across 5 modules)
+- `packages/affiliate-helper/js/` — Apple Music affiliate link builder
+  - `tests/` — Vitest suite (25 tests)
 - `.github/workflows/` — `deploy.yml` (Pages), `fetch-data.yml` (weekly cron),
-  `codeql.yml`, `tests.yml` (pytest on push/PR).
+  `codeql.yml`, `tests.yml` (pytest + vitest on push/PR).
 
 ## Commands
 
@@ -30,6 +31,7 @@ auto-committed by the weekly `fetch-data.yml` workflow.
 npm run dev                                # Astro dev server
 npm run build                              # Astro build (DEPLOY_TARGET=public for Pages)
 npm run check                              # astro check (TypeScript)
+npm test                                   # Run JS tests (vitest)
 
 cd pipeline && python -m pytest tests/ -v  # Run Python tests
 pip install -r pipeline/requirements.txt   # Pipeline runtime deps
@@ -45,19 +47,21 @@ zero values, partial responses, and new tracks in the fetched set.
 
 ## Test status
 
-44 passing. Coverage now includes `fetch_plays.monotonic_merge_tracks` and
-`monotonic_total` — the load-bearing invariant.
+105 Python + 25 JS passing. Coverage now includes:
+- `fetch_plays` — monotonic helpers + SoundCloud / Spotify / Apple Music
+  fetch orchestration, history.csv writer, GitHub alert path, RSS parsing
+- `fetch_playlists` — client_credentials auth, retry, dedup, search nullability
+- `spotify_client` — `_refresh()` rotation path, 401 recovery, retry exhaustion
+- `spotify_auth` — PKCE, `exchange_code`, refresh-token rotation including
+  `::add-mask::`, `$GITHUB_ENV` write, and `gh secret set` failure modes
+- `affiliate-helper.js` — `link()`, `rewrite()`, `parseCt()`, byte-exact URL
+  conformance with the Swift / Python sibling builders
 
 ## Known test gaps
 
-These modules still have no tests — prioritize when adding coverage:
-
-- `fetch_plays.py` — only the monotonic helpers are covered; the SoundCloud /
-  Spotify / Apple Music fetch orchestration paths are not.
-- `fetch_playlists.py` (client_credentials flow)
-- `spotify_client.SpotifyClient._refresh()` (401 → refresh → retry path)
-- `spotify_discord_analytics.py`, `spotify_enhanced_analytics.py`
-- `packages/affiliate-helper/js/affiliate-helper.js` (no JS test runner set up)
+- `spotify_discord_analytics.py`, `spotify_enhanced_analytics.py` — analytics
+  modules not currently in any workflow, lower priority.
+- `_run_local_auth` (interactive HTTP server callback) — local-dev only.
 
 ## Conventions
 
