@@ -113,14 +113,25 @@ const playlistFetchedAt = playlistsData.fetched_at
         return;
       }
 
-      const labels = rows.map(r => {
+      // Aggregate to one row per UTC day (last reading wins). The raw CSV has
+      // many intra-day samples — without this the X-axis renders the same date
+      // label multiple times.
+      const dayMap = new Map();
+      for (const r of rows) {
         const d = new Date(r.timestamp);
-        return isNaN(d) ? r.timestamp : d.toLocaleDateString("en-IE", { month: "short", day: "numeric", year: "numeric" });
-      });
+        if (isNaN(d)) continue;
+        dayMap.set(d.toISOString().slice(0, 10), r);
+      }
+      const dayKeys = [...dayMap.keys()].sort();
+      const daily = dayKeys.map(k => dayMap.get(k));
 
-      const sc = nullifyZeros(clamp(rows.map(r => toInt(r.soundcloud_total_plays))));
-      const sp = nullifyZeros(clamp(rows.map(r => toInt(r.spotify_total_streams || r.spotify_total_popularity))));
-      const am = nullifyZeros(clamp(rows.map(r => toInt(r.apple_music_total_plays))));
+      const labels = dayKeys.map(k =>
+        new Date(k + "T00:00:00Z").toLocaleDateString("en-IE", { month: "short", day: "numeric", year: "numeric" })
+      );
+
+      const sc = nullifyZeros(clamp(daily.map(r => toInt(r.soundcloud_total_plays))));
+      const sp = nullifyZeros(clamp(daily.map(r => toInt(r.spotify_total_streams || r.spotify_total_popularity))));
+      const am = nullifyZeros(clamp(daily.map(r => toInt(r.apple_music_total_plays))));
 
       // Chart.js loaded via SRI-locked UMD <script> above; wait for the global.
       await new Promise((resolve) => {
@@ -191,7 +202,23 @@ const playlistFetchedAt = playlistsData.fetched_at
           plugins: {
             legend: {
               position: "top",
-              labels: { color: "#f5f5f7", font: { size: 14, weight: "bold" }, padding: 20, boxWidth: 32, boxHeight: 14, generateLabels(chart) { return chart.data.datasets.map((ds, i) => ({ text: ds.label, fillStyle: "rgba(0,0,0,0)", strokeStyle: ds.borderColor, lineWidth: 3, hidden: !chart.isDatasetVisible(i), datasetIndex: i })); } }
+              labels: {
+                color: "#f5f5f7",
+                font: { size: 14, weight: "bold" },
+                padding: 20,
+                boxWidth: 32,
+                boxHeight: 14,
+                generateLabels(chart) {
+                  return chart.data.datasets.map((ds, i) => ({
+                    text: ds.label,
+                    fillStyle: ds.borderColor,
+                    strokeStyle: ds.borderColor,
+                    lineWidth: 0,
+                    hidden: !chart.isDatasetVisible(i),
+                    datasetIndex: i
+                  }));
+                }
+              }
             },
             title: {
               display: true,
