@@ -36,7 +36,8 @@ For the public-facing artist page, see the root [README.md](../README.md) and th
 │    ├── spotify_errors.py        # Typed error hierarchy
 │    ├── requirements.txt
 │    └── tests/                   # 20 unit tests
-├── examples/                    # Runnable Spotify demos
+├── dev/                         # Setup scripts, runnable demos, dev-only tooling
+│    └── examples/               # Runnable Spotify demos
 ├── data/                        # Auto-committed by pipeline
 │    ├── plays.json               # Latest play count snapshot
 │    ├── history.csv              # Time-series (appended daily)
