@@ -69,6 +69,12 @@ const playlistFetchedAt = playlistsData.fetched_at
     integrity="sha384-XcdcwHqIPULERb2yDEM4R0XaQKU3YnDsrTmjACBZyfdVVqjh6xQ4/DCMd7XLcA6Y"
     crossorigin="anonymous"
   ></script>
+  <!-- Pinned + SRI-locked date-fns adapter (bundled). Required for the time-scale X axis. -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"
+    integrity="sha384-cVMg8E3QFwTvGCDuK+ET4PD341jF3W8nO1auiXfuZNQkzbUUiBGLsIQUE+b1mxws"
+    crossorigin="anonymous"
+  ></script>
   <script type="module">
     (async () => {
       const dataEl = document.getElementById("chart-data");
@@ -114,8 +120,8 @@ const playlistFetchedAt = playlistsData.fetched_at
       }
 
       // Aggregate to one row per UTC day (last reading wins). The raw CSV has
-      // many intra-day samples — without this the X-axis renders the same date
-      // label multiple times.
+      // many intra-day samples — without this the time scale would draw a
+      // dense forest of same-day points.
       const dayMap = new Map();
       for (const r of rows) {
         const d = new Date(r.timestamp);
@@ -124,21 +130,38 @@ const playlistFetchedAt = playlistsData.fetched_at
       }
       const dayKeys = [...dayMap.keys()].sort();
       const daily = dayKeys.map(k => dayMap.get(k));
+      const xs = dayKeys.map(k => new Date(k + "T00:00:00Z").getTime());
 
-      const labels = dayKeys.map(k =>
-        new Date(k + "T00:00:00Z").toLocaleDateString("en-IE", { month: "short", day: "numeric", year: "numeric" })
-      );
+      const scYs = nullifyZeros(clamp(daily.map(r => toInt(r.soundcloud_total_plays))));
+      const spYs = nullifyZeros(clamp(daily.map(r => toInt(r.spotify_total_streams || r.spotify_total_popularity))));
+      const amYs = nullifyZeros(clamp(daily.map(r => toInt(r.apple_music_total_plays))));
 
-      const sc = nullifyZeros(clamp(daily.map(r => toInt(r.soundcloud_total_plays))));
-      const sp = nullifyZeros(clamp(daily.map(r => toInt(r.spotify_total_streams || r.spotify_total_popularity))));
-      const am = nullifyZeros(clamp(daily.map(r => toInt(r.apple_music_total_plays))));
+      const toPoints = ys => xs.map((x, i) => ({ x, y: ys[i] }));
+      const sc = toPoints(scYs);
+      const sp = toPoints(spYs);
+      const am = toPoints(amYs);
 
-      // Chart.js loaded via SRI-locked UMD <script> above; wait for the global.
+      // Chart.js + the date-fns adapter both load via sync UMD <script> tags
+      // above this module. Module scripts are deferred, so by the time we run
+      // both globals should already exist. The adapter mutates
+      // Chart._adapters._date in place — verify the adapter actually replaced
+      // the stub before constructing a time-scale chart.
+      function adapterReady() {
+        if (typeof window === "undefined" || !window.Chart) return false;
+        try {
+          const D = window.Chart._adapters && window.Chart._adapters._date;
+          if (!D) return false;
+          new D({}).format(Date.now(), "yyyy");
+          return true;
+        } catch (_) {
+          return false;
+        }
+      }
       await new Promise((resolve) => {
-        if (typeof window !== "undefined" && window.Chart) return resolve();
+        if (adapterReady()) return resolve();
         const start = Date.now();
         const tick = setInterval(() => {
-          if (typeof window !== "undefined" && window.Chart) {
+          if (adapterReady()) {
             clearInterval(tick);
             resolve();
           } else if (Date.now() - start > 10000) {
@@ -153,7 +176,6 @@ const playlistFetchedAt = playlistsData.fetched_at
       new Chart(canvas, {
         type: "line",
         data: {
-          labels,
           datasets: [
             {
               label: "SoundCloud",
@@ -240,7 +262,13 @@ const playlistFetchedAt = playlistsData.fetched_at
           },
           scales: {
             x: {
-              ticks: { color: "#98989d", maxTicksLimit: 12, font: { size: 11 }, maxRotation: 0 },
+              type: "time",
+              time: {
+                unit: "month",
+                tooltipFormat: "d MMM yyyy",
+                displayFormats: { day: "d MMM", month: "MMM yyyy", year: "yyyy" }
+              },
+              ticks: { color: "#98989d", maxTicksLimit: 12, font: { size: 11 }, maxRotation: 0, autoSkip: true },
               grid: { color: "rgba(240,240,245,0.08)" },
               title: { display: true, text: "Timeline", color: "#98989d", font: { size: 14, weight: "bold" } }
             },
