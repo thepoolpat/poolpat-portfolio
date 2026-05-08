@@ -35,7 +35,7 @@ PROJECT_DIR = SCRIPT_DIR.parent
 
 # Load credentials
 ENV_SPOTIFY = PROJECT_DIR / ".env.spotify"
-CONFIG_FILE = PROJECT_DIR / "config" / "camoufox_spotify.json"
+CONFIG_FILE = PROJECT_DIR / "dev" / "config" / "camoufox_spotify.json"
 
 class CamoufoxSpotifyPlayer:
     """Spotify player with camoufox integration."""

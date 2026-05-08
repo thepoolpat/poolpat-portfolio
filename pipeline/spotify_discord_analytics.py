@@ -44,7 +44,8 @@ class SpotifyDiscordAnalytics:
         }
         
         # Analytics database
-        self.db_path = Path.home() / "poolpat-portfolio" / "spotify_logs" / "analytics.db"
+        _repo_root = Path(__file__).resolve().parent.parent
+        self.db_path = _repo_root / "dev" / "spotify_logs" / "analytics.db"
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
         
