@@ -19,7 +19,7 @@ const amTracks = data.apple_music?.tracks || {};
 const scTotal = data.soundcloud?.total_plays_all_platforms || data.soundcloud?.total_plays || Object.values(scTracks).reduce((a: number, b: any) => a + (b || 0), 0);
 const spTotal = data.spotify?.total_streams || Object.values(spTracks).reduce((a: number, b: any) => a + (b || 0), 0);
 const amTotal = data.apple_music?.total_plays || Object.values(amTracks).reduce((a: number, b: any) => a + (b || 0), 0);
-const grandTotal = scTotal + spTotal + amTotal;
+const grandTotal = data.soundcloud?.total_plays_all_platforms || (scTotal + spTotal + amTotal);
 
 const scFollowers = data.soundcloud?.followers || 0;
 const spMonthly = data.spotify?.monthly_listeners || 0;
@@ -41,7 +41,7 @@ const playlistFetchedAt = playlistsData.fetched_at
   ? new Date(playlistsData.fetched_at).toLocaleDateString("en-IE", { day: "numeric", month: "short", year: "numeric" })
   : null;
 ---
-<Base title="Poolpat â Play Stats" description="Live play count dashboard for Poolpat across SoundCloud, Spotify, and Apple Music." canonicalPath="/stats/">
+<Base title="Poolpat &mdash; Play Stats" description="Live play count dashboard for Poolpat across SoundCloud, Spotify, and Apple Music." canonicalPath="/stats/">
   <h1>Play Stats</h1>
   <p class="muted">Updated daily &middot; Last: {lastUpdated}</p>
 
@@ -137,7 +137,7 @@ const playlistFetchedAt = playlistsData.fetched_at
         }, 30);
       });
       const Chart = window.Chart;
-      // UMD bundle auto-registers all controllers/scales â no Chart.register() needed.
+      // UMD bundle auto-registers all controllers/scales &mdash; no Chart.register() needed.
 
       new Chart(canvas, {
         type: "line",
@@ -173,8 +173,8 @@ const playlistFetchedAt = playlistsData.fetched_at
             {
               label: "Apple Music",
               data: am,
-              borderColor: "#FA57C1",
-              backgroundColor: "rgba(250,87,193,0.15)",
+              borderColor: "#fa233b",
+              backgroundColor: "rgba(250,35,59,0.15)",
               fill: true,
               tension: 0.4,
               borderWidth: 3,
@@ -244,7 +244,7 @@ const playlistFetchedAt = playlistsData.fetched_at
 
   {playlists.length > 0 && (
     <section class="section">
-      <h2>Playlist Placements â Spotify</h2>
+      <h2>Playlist Placements &mdash; Spotify</h2>
       {playlistFetchedAt && <p class="muted" style="margin-bottom:1rem">Last checked: {playlistFetchedAt}</p>}
       <ul class="tracks">
         {playlists.slice(0, 20).map((p: any, i: number) => (
@@ -263,7 +263,7 @@ const playlistFetchedAt = playlistsData.fetched_at
   )}
 
   <section class="section">
-    <h2>Top Tracks â SoundCloud</h2>
+    <h2>Top Tracks &mdash; SoundCloud</h2>
     <ul class="tracks">
       {scSorted.slice(0, 15).map(([title, plays], i) => (
         <li class="track">
@@ -276,7 +276,7 @@ const playlistFetchedAt = playlistsData.fetched_at
   </section>
 
   <section class="section">
-    <h2>Top Tracks â Spotify</h2>
+    <h2>Top Tracks &mdash; Spotify</h2>
     <ul class="tracks">
       {spSorted.slice(0, 15).map(([title, plays], i) => (
         <li class="track">
@@ -289,7 +289,7 @@ const playlistFetchedAt = playlistsData.fetched_at
   </section>
 
   <section class="section">
-    <h2>Top Tracks â Apple Music</h2>
+    <h2>Top Tracks &mdash; Apple Music</h2>
     <ul class="tracks">
       {amSorted.slice(0, 15).map(([title, plays], i) => (
         <li class="track">
