@@ -191,7 +191,7 @@ const playlistFetchedAt = playlistsData.fetched_at
           plugins: {
             legend: {
               position: "top",
-              labels: { color: "#f5f5f7", font: { size: 14, weight: "bold" }, padding: 20 }
+              labels: { color: "#f5f5f7", font: { size: 14, weight: "bold" }, padding: 20, boxWidth: 32, boxHeight: 14, generateLabels(chart) { return chart.data.datasets.map((ds, i) => ({ text: ds.label, fillStyle: "rgba(0,0,0,0)", strokeStyle: ds.borderColor, lineWidth: 3, hidden: !chart.isDatasetVisible(i), datasetIndex: i })); } }
             },
             title: {
               display: true,
