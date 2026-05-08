@@ -181,39 +181,39 @@ const playlistFetchedAt = playlistsData.fetched_at
               label: "SoundCloud",
               data: sc,
               borderColor: "#FF4000",
-              backgroundColor: "rgba(255,64,0,0.15)",
-              fill: true,
-              tension: 0.4,
-              borderWidth: 3,
-              pointRadius: 0,
+              backgroundColor: "#FF4000",
+              fill: false,
+              tension: 0,
+              borderWidth: 2.5,
+              pointRadius: 3,
+              pointHoverRadius: 5,
               pointHitRadius: 10,
-              cubicInterpolationMode: "monotone",
               spanGaps: true
             },
             {
               label: "Spotify",
               data: sp,
               borderColor: "#1DB954",
-              backgroundColor: "rgba(29,185,84,0.15)",
-              fill: true,
-              tension: 0.4,
-              borderWidth: 3,
-              pointRadius: 0,
+              backgroundColor: "#1DB954",
+              fill: false,
+              tension: 0,
+              borderWidth: 2.5,
+              pointRadius: 3,
+              pointHoverRadius: 5,
               pointHitRadius: 10,
-              cubicInterpolationMode: "monotone",
               spanGaps: true
             },
             {
               label: "Apple Music",
               data: am,
               borderColor: "#fa233b",
-              backgroundColor: "rgba(250,35,59,0.15)",
-              fill: true,
-              tension: 0.4,
-              borderWidth: 3,
-              pointRadius: 0,
+              backgroundColor: "#fa233b",
+              fill: false,
+              tension: 0,
+              borderWidth: 2.5,
+              pointRadius: 3,
+              pointHoverRadius: 5,
               pointHitRadius: 10,
-              cubicInterpolationMode: "monotone",
               spanGaps: true
             }
           ]
@@ -290,7 +290,7 @@ const playlistFetchedAt = playlistsData.fetched_at
               title: { display: true, text: "Cumulative Plays (log scale)", color: "#98989d", font: { size: 14, weight: "bold" } }
             }
           },
-          elements: { line: { tension: 0.4, borderWidth: 3 }, point: { radius: 0, hitRadius: 10 } },
+          elements: { line: { tension: 0, borderWidth: 2.5 }, point: { radius: 3, hitRadius: 10 } },
           animation: { duration: 1200, easing: "easeOutQuart" }
         }
       });
