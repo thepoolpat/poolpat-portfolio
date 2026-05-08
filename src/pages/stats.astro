@@ -97,14 +97,20 @@ const playlistFetchedAt = playlistsData.fetched_at
         return isFinite(n) ? n : 0;
       }
 
-      function clamp(arr) {
+      // Build a monotonic series for the chart: zeros are treated as MISSING
+      // DATA (null), not as "still at the previous max". The previous behavior
+      // clamped the running max forward across zeros, which produced a flat
+      // plateau followed by a vertical jump when real data finally arrived
+      // (e.g. AM stuck at 103 from Jan 2024 until the first AM4A capture in
+      // April 2026). With nulls + spanGaps: true the chart draws a single
+      // smooth diagonal from the last real point to the next.
+      function projectMonotonic(arr) {
         let max = 0;
-        return arr.map(v => { max = Math.max(max, v); return max; });
-      }
-
-      function nullifyZeros(arr) {
-        // Log-scale rendering needs >0 values; let Chart.js skip the rest.
-        return arr.map(v => v > 0 ? v : null);
+        return arr.map(v => {
+          if (!v || v <= 0) return null;
+          max = Math.max(max, v);
+          return max;
+        });
       }
 
       const encoded = dataEl?.dataset?.history || "";
@@ -132,9 +138,9 @@ const playlistFetchedAt = playlistsData.fetched_at
       const daily = dayKeys.map(k => dayMap.get(k));
       const xs = dayKeys.map(k => new Date(k + "T00:00:00Z").getTime());
 
-      const scYs = nullifyZeros(clamp(daily.map(r => toInt(r.soundcloud_total_plays))));
-      const spYs = nullifyZeros(clamp(daily.map(r => toInt(r.spotify_total_streams || r.spotify_total_popularity))));
-      const amYs = nullifyZeros(clamp(daily.map(r => toInt(r.apple_music_total_plays))));
+      const scYs = projectMonotonic(daily.map(r => toInt(r.soundcloud_total_plays)));
+      const spYs = projectMonotonic(daily.map(r => toInt(r.spotify_total_streams || r.spotify_total_popularity)));
+      const amYs = projectMonotonic(daily.map(r => toInt(r.apple_music_total_plays)));
 
       const toPoints = ys => xs.map((x, i) => ({ x, y: ys[i] }));
       const sc = toPoints(scYs);
