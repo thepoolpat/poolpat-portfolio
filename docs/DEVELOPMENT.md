@@ -37,7 +37,9 @@ For the public-facing artist page, see the root [README.md](../README.md) and th
 │    ├── requirements.txt
 │    └── tests/                   # 20 unit tests
 ├── dev/                         # Setup scripts, runnable demos, dev-only tooling
-│    └── examples/               # Runnable Spotify demos
+│    ├── examples/               # Runnable Spotify demos
+│    ├── config/                 # camoufox_spotify.json
+│    └── spotify_logs/           # Local analytics DBs (gitignored) + spotify_export.csv
 ├── data/                        # Auto-committed by pipeline
 │    ├── plays.json               # Latest play count snapshot
 │    ├── history.csv              # Time-series (appended daily)

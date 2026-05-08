@@ -39,7 +39,9 @@ class EnhancedSpotifyAnalytics:
         }
         
         # Enhanced database
-        self.db_path = Path.home() / "poolpat-portfolio" / "spotify_logs" / "analytics_v2.db"
+        _repo_root = Path(__file__).resolve().parent.parent
+        self._logs_dir = _repo_root / "dev" / "spotify_logs"
+        self.db_path = self._logs_dir / "analytics_v2.db"
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db_v2()
         
@@ -341,7 +343,7 @@ class EnhancedSpotifyAnalytics:
         dashboard = c.fetchall()
         
         # Export to CSV
-        csv_path = Path.home() / "poolpat-portfolio" / "spotify_logs" / filename
+        csv_path = self._logs_dir / filename
         with open(csv_path, 'w', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=["date", "plays", "top_artist", "top_artist_plays"])
             writer.writeheader()

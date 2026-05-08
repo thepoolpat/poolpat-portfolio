@@ -11,7 +11,8 @@ from pathlib import Path
 
 # Config
 N = int(sys.argv[1]) if len(sys.argv) > 1 else 50
-DB_PATH = Path.home() / "poolpat-portfolio" / "spotify_logs" / "analytics.db"
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+DB_PATH = _REPO_ROOT / "dev" / "spotify_logs" / "analytics.db"
 ENV_PATH = Path.home() / "poolpat-portfolio" / ".env.spotify"
 
 def load_spotify_creds():
