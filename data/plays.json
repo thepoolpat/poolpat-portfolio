@@ -1,6 +1,6 @@
 {
   "artist": "Poolpat",
-  "last_updated": "2026-05-08T14:09:17.682306+00:00",
+  "last_updated": "2026-05-08T18:10:46.001061+00:00",
   "soundcloud": {
     "url": "https://soundcloud.com/poolpat",
     "tracks": {
@@ -16,14 +16,14 @@
       "The Kraken X Otaku Black X Jimmy Cena Scratch By JusMe": 773,
       "Ooh La La La!": 774,
       "Sephiroth": 826,
-      "Folks Now!": 206,
+      "Folks Now!": 207,
       "Minnie": 247,
-      "Flat Monkey Beat": 164,
-      "Keep the Fire Burning (Remix)": 356,
+      "Flat Monkey Beat": 165,
+      "Keep the Fire Burning (Remix)": 358,
       "Get lucky Technologic Bootleg": 219,
       "Tech Mix 124-134BPM": 45,
       "O'sho II": 19,
-      "Midtown Winter Lofi": 159,
+      "Midtown Winter Lofi": 160,
       "P.S. (Waves Rework, Ft. Farid Williams, King of Hearts)": 467,
       "Ça Me Saoule": 756,
       "Interlude": 256,
@@ -50,11 +50,11 @@
       "Schneck De Traître X L.Stoch": 775,
       "Déjà 30 Piges (feat. Djar One & Jaws) [Remix]": 1354
     },
-    "total_plays": 28356,
+    "total_plays": 29130,
     "total_tracks": 46,
-    "followers": 128,
+    "followers": 129,
     "fetch_status": "success",
-    "last_successful_fetch": "2026-05-06T02:19:35.771775+00:00",
+    "last_successful_fetch": "2026-05-08T18:10:48.087716+00:00",
     "total_plays_all_platforms": 51823,
     "total_streams_sc": 18635,
     "total_downloads": 3690,
@@ -89,7 +89,7 @@
     "monthly_listeners": 14,
     "streams_28d": 26,
     "fetch_status": "success",
-    "last_successful_fetch": "2026-05-06T02:19:39.017289+00:00",
+    "last_successful_fetch": "2026-05-08T18:10:50.759262+00:00",
     "auth_method": "user_token",
     "note": "total_streams/monthly_listeners from Spotify for Artists (manual). Track values are popularity scores.",
     "top_tracks_short": [
@@ -201,28 +201,7 @@
       "It Was A Good Day",
       "Full Clip",
       "Cairo"
-    ],
-    "release_dates": {
-      "Collective Suicide X Otaku Black": "2024-02-12",
-      "The Moocher X Goldie Bron$on X Jack Eagan": "2024-02-12",
-      "Minnie X Saturn Astrid": "2024-02-12",
-      "Ooh la la la!": "2024-02-12",
-      "Sephiroth": "2024-02-12",
-      "Ça me saoule": "2024-02-12",
-      "The Kraken X Otaku Black X Jimmy Cena scratch by JusMe": "2024-02-12",
-      "Interlude de bat%rd": "2024-02-12",
-      "Tapis Rouge - Remix": "2023-12-15",
-      "Wanna Be Seen": "2024-09-01",
-      "J'peux pas y a le match - Remix": "2023-12-15",
-      "Get It Out": "2023-12-01",
-      "Damsels In Distress - Instrumental": "2023-12-01",
-      "Déjà 30 piges - Remix": "2023-12-15",
-      "NO EYES": "2024-11-26",
-      "Minnie": "2025-12-13",
-      "Folks Now!": "2025-12-13",
-      "Damsels in distress - Instrumental": "2023-12-01"
-    },
-    "catalog_first_release": "2023-12-01"
+    ]
   },
   "apple_music": {
     "url": "https://music.apple.com/us/artist/poolpat/1716939831",
