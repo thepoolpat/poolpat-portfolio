@@ -10,7 +10,7 @@ const data = playsRaw as any;
 const base = import.meta.env.BASE_URL;
 const site = import.meta.env.SITE ?? "https://thepoolpat.github.io";
 const art = (r: any) => `${base}${r.artwork}`;
-const scTotal = data.soundcloud?.total_plays_all_platforms || data.soundcloud?.total_plays || 0;
+const scTotal = data.soundcloud?.total_plays || 0;
 const spTotal = data.spotify?.total_streams || 0;
 const amTotal = data.apple_music?.total_plays || 0;
 const grandTotal = scTotal + spTotal + amTotal;

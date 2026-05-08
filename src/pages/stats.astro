@@ -16,7 +16,7 @@ const scTracks = data.soundcloud?.tracks || {};
 const spTracks = data.spotify?.tracks || {};
 const amTracks = data.apple_music?.tracks || {};
 
-const scTotal = data.soundcloud?.total_plays_all_platforms || data.soundcloud?.total_plays || Object.values(scTracks).reduce((a: number, b: any) => a + (b || 0), 0);
+const scTotal = data.soundcloud?.total_plays || Object.values(scTracks).reduce((a: number, b: any) => a + (b || 0), 0);
 const spTotal = data.spotify?.total_streams || Object.values(spTracks).reduce((a: number, b: any) => a + (b || 0), 0);
 const amTotal = data.apple_music?.total_plays || Object.values(amTracks).reduce((a: number, b: any) => a + (b || 0), 0);
 const grandTotal = data.soundcloud?.total_plays_all_platforms || (scTotal + spTotal + amTotal);
