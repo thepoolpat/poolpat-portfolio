@@ -41,7 +41,7 @@ const playlistFetchedAt = playlistsData.fetched_at
   ? new Date(playlistsData.fetched_at).toLocaleDateString("en-IE", { day: "numeric", month: "short", year: "numeric" })
   : null;
 ---
-<Base title="Poolpat — Play Stats" description="Live play count dashboard for Poolpat across SoundCloud, Spotify, and Apple Music." canonicalPath="/stats/">
+<Base title="Poolpat — Play Stats" description="Live play count dashboard for Poolpat across SoundCloud and Spotify." canonicalPath="/stats/">
   <h1>Play Stats</h1>
   <p class="muted">Updated daily &middot; Last: {lastUpdated}</p>
 
@@ -58,7 +58,7 @@ const playlistFetchedAt = playlistsData.fetched_at
   <section class="section">
     <h2>Play Count Trends</h2>
     <div class="chart-container">
-      <canvas id="plays-chart" role="img" aria-label="Line chart showing play count trends over time for SoundCloud, Spotify, and Apple Music"></canvas>
+      <canvas id="plays-chart" role="img" aria-label="Line chart showing play count trends over time for SoundCloud and Spotify"></canvas>
       <div id="chart-data" data-history={encodedHistory} style="display:none"></div>
     </div>
   </section>
@@ -162,19 +162,6 @@ const playlistFetchedAt = playlistsData.fetched_at
               data: sp,
               borderColor: "#1DB954",
               backgroundColor: "rgba(29,185,84,0.15)",
-              fill: true,
-              tension: 0.4,
-              borderWidth: 3,
-              pointRadius: 0,
-              pointHitRadius: 10,
-              cubicInterpolationMode: "monotone",
-              spanGaps: true
-            },
-            {
-              label: "Apple Music",
-              data: am,
-              borderColor: "#FC3C44",
-              backgroundColor: "rgba(252,60,68,0.15)",
               fill: true,
               tension: 0.4,
               borderWidth: 3,
