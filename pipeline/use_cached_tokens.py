@@ -8,8 +8,8 @@ import time
 
 cache_dir = Path.home() / ".cache" / "spotify_oauth"
 sp_oauth = SpotifyOAuth(
-    client_id="88d1cb87aba74f809133542879d8885c",
-    client_secret="b4b12af5921b471e8ef1bda971816912",
+    client_id="YOUR_SPOTIFY_CLIENT_ID",
+    client_secret="YOUR_SPOTIFY_CLIENT_SECRET",
     redirect_uri="http://127.0.0.1:8888/callback",
     scope="user-read-playback-state,user-modify-playback-state",
     cache_path=str(cache_dir),

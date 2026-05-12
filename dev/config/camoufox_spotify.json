@@ -3,7 +3,7 @@
     "enabled": true,
     "base_url": "http://127.0.0.1:8888",
     "spotify_integration": {
-      "client_id": "88d1cb87aba74f809133542879d8885c",
+      "client_id": "YOUR_SPOTIFY_CLIENT_ID",
       "redirect_uri": "http://127.0.0.1:8888/callback",
       "auto_refresh": true,
       "device_poll_interval_ms": 5000

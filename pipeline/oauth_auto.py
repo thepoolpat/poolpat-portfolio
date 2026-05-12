@@ -42,11 +42,11 @@ print()
 
 # Try to open browser
 try:
-    webbrowser.open("https://accounts.spotify.com/authorize?client_id=88d1cb87aba74f809133542879d8885c&response_type=code&redirect_uri=http%3A%2F%2F127.0.0.1%3A8888%2Fcallback&scope=user-read-playback-state%20user-modify-playback-state")
+    webbrowser.open("https://accounts.spotify.com/authorize?client_id=YOUR_SPOTIFY_CLIENT_ID&response_type=code&redirect_uri=http%3A%2F%2F127.0.0.1%3A8888%2Fcallback&scope=user-read-playback-state%20user-modify-playback-state")
 except:
     print("Browser did not open automatically. Try this URL manually:")
     print()
-    print("https://accounts.spotify.com/authorize?client_id=88d1cb87aba74f809133542879d8885c&response_type=code&redirect_uri=http%3A%2F%2F127.0.0.1%3A8888%2Fcallback&scope=user-read-playback-state%20user-modify-playback-state")
+    print("https://accounts.spotify.com/authorize?client_id=YOUR_SPOTIFY_CLIENT_ID&response_type=code&redirect_uri=http%3A%2F%2F127.0.0.1%3A8888%2Fcallback&scope=user-read-playback-state%20user-modify-playback-state")
     print()
     input("Press Enter after opening the URL...")
 
@@ -70,7 +70,7 @@ if callback_code[0]:
     print("Exchanging for tokens...")
     
     sp_oauth = SpotifyOAuth(
-        client_id="88d1cb87aba74f809133542879d8885c",
+        client_id="YOUR_SPOTIFY_CLIENT_ID",
         client_secret="xxx",
         redirect_uri="http://127.0.0.1:8888/callback",
         scope="user-read-playback-state,user-modify-playback-state",

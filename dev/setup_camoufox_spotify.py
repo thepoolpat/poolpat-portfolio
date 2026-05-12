@@ -27,7 +27,7 @@ ENV_FILE = PROJECT_ROOT / ".env"
 ENV_SPOTIFY = PROJECT_ROOT / ".env.spotify"
 AUTH_FILE = Path.home() / ".hermes" / "auth.json"
 
-SPOTIFY_CLIENT_ID = "88d1cb87aba74f809133542879d8885c"
+SPOTIFY_CLIENT_ID = "YOUR_SPOTIFY_CLIENT_ID"
 SPOTIFY_REDIRECT_URI = "http://127.0.0.1:8888/callback"
 
 # ============================================================================

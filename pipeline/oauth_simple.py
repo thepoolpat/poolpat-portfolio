@@ -10,11 +10,11 @@ cache_dir = Path.home() / ".cache" / "spotify_oauth"
 print("🔑 Loading credentials...")
 
 # Generate a simple client secret for the flow
-client_secret = "88d1cb87aba74f809133542879d8885c"  # Using client_id as secret (PKCE)
+client_secret = "YOUR_SPOTIFY_CLIENT_ID"  # Using client_id as secret (PKCE)
 
 # Create OAuth object
 sp_oauth = SpotifyOAuth(
-    client_id="88d1cb87aba74f809133542879d8885c",
+    client_id="YOUR_SPOTIFY_CLIENT_ID",
     client_secret=client_secret,
     redirect_uri="http://127.0.0.1:8888/callback",
     scope="user-read-playback-state,user-modify-playback-state",
