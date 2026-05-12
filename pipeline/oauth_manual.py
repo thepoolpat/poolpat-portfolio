@@ -11,7 +11,7 @@ print("="*60)
 print()
 print("Step 1: Open this URL in your browser:")
 print()
-auth_url = "https://accounts.spotify.com/authorize?client_id=88d1cb87aba74f809133542879d8885c&response_type=code&redirect_uri=http%3A%2F%2F127.0.0.1%3A8888%2Fcallback&scope=user-read-playback-state%20user-modify-playback-state"
+auth_url = "https://accounts.spotify.com/authorize?client_id=YOUR_SPOTIFY_CLIENT_ID&response_type=code&redirect_uri=http%3A%2F%2F127.0.0.1%3A8888%2Fcallback&scope=user-read-playback-state%20user-modify-playback-state"
 print(auth_url)
 print()
 print("Step 2: Click 'Agree' to authorize")
@@ -30,7 +30,7 @@ if 'code=' in callback_url:
     print("Exchanging for tokens...")
     
     sp_oauth = SpotifyOAuth(
-        client_id="88d1cb87aba74f809133542879d8885c",
+        client_id="YOUR_SPOTIFY_CLIENT_ID",
         client_secret="xxx",
         redirect_uri="http://127.0.0.1:8888/callback",
         scope="user-read-playback-state,user-modify-playback-state",

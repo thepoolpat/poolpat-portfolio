@@ -9,7 +9,7 @@ cache_dir = Path.home() / ".cache" / "spotify_oauth"
 
 # Create OAuth object (PKCE flow)
 sp_oauth = SpotifyOAuth(
-    client_id="88d1cb87aba74f809133542879d8885c",
+    client_id="YOUR_SPOTIFY_CLIENT_ID",
     client_secret="anything",  # Required but not validated for PKCE
     redirect_uri="http://127.0.0.1:8888/callback",
     scope="user-read-playback-state,user-modify-playback-state",

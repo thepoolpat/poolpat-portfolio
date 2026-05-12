@@ -12,7 +12,7 @@ cache_dir = Path.home() / '.cache' / 'spotify_oauth'
 cache_dir.mkdir(parents=True, exist_ok=True)
 
 sp_oauth = SpotifyOAuth(
-    client_id='88d1cb87aba74f809133542879d8885c',
+    client_id='YOUR_SPOTIFY_CLIENT_ID',
     redirect_uri='http://127.0.0.1:8888/callback',
     scope='user-read-playback-state,user-modify-playback-state',
     cache_path=str(cache_dir),
@@ -31,7 +31,7 @@ except Exception as e:
             'code': code,
             'redirect_uri': 'http://127.0.0.1:8888/callback',
             'grant_type': 'authorization_code',
-            'client_id': '88d1cb87aba74f809133542879d8885c',
+            'client_id': 'YOUR_SPOTIFY_CLIENT_ID',
         },
         headers={'Authorization': ''}
     )
