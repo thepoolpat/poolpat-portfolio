@@ -3,6 +3,7 @@ import {
   link,
   rewrite,
   parseCt,
+  hashCampaign,
   AffiliateError,
   TOKEN,
   HOST,
@@ -192,9 +193,9 @@ describe("parseCt()", () => {
   });
 });
 
-describe("byte-exact URL conformance", () => {
+describe("URL composition stability", () => {
   // These guard against accidental encoding changes (e.g. switching to URLSearchParams)
-  // that would diverge from the Swift / Python sibling builders.
+  // that would shift the produced bytes.
   it("does not URL-encode hyphens in ct", () => {
     const url = link({
       storefront: "ie",
@@ -218,5 +219,124 @@ describe("byte-exact URL conformance", () => {
     const query = url.split("?")[1];
     const keys = query.split("&").map((kv) => kv.split("=")[0]);
     expect(keys).toEqual(["at", "app", "ct"]);
+  });
+});
+
+describe("hashCampaign()", () => {
+  const SALT = "test-salt-do-not-use-in-prod";
+
+  function withEnv(overrides, fn) {
+    const saved = {};
+    for (const k of Object.keys(overrides)) {
+      saved[k] = process.env[k];
+      if (overrides[k] === undefined) delete process.env[k];
+      else process.env[k] = overrides[k];
+    }
+    try {
+      return fn();
+    } finally {
+      for (const k of Object.keys(saved)) {
+        if (saved[k] === undefined) delete process.env[k];
+        else process.env[k] = saved[k];
+      }
+    }
+  }
+
+  it("returns a 'surface-<10hex>' token", () => {
+    const out = hashCampaign("web-portfolio-discipline-hero", { salt: SALT });
+    expect(out).toMatch(/^web-[0-9a-f]{10}$/);
+  });
+
+  it("is deterministic for same salt + plaintext", () => {
+    const a = hashCampaign("web-portfolio-discipline-hero", { salt: SALT });
+    const b = hashCampaign("web-portfolio-discipline-hero", { salt: SALT });
+    expect(a).toBe(b);
+  });
+
+  it("different salts produce different hashes", () => {
+    const a = hashCampaign("web-portfolio-discipline-hero", { salt: "salt-a" });
+    const b = hashCampaign("web-portfolio-discipline-hero", { salt: "salt-b" });
+    expect(a).not.toBe(b);
+  });
+
+  it("different plaintexts produce different hashes (same salt)", () => {
+    const a = hashCampaign("web-portfolio-discipline-hero", { salt: SALT });
+    const b = hashCampaign("web-portfolio-discipline-cta", { salt: SALT });
+    expect(a).not.toBe(b);
+  });
+
+  it("output round-trips through link() (passes validateCt)", () => {
+    const hashed = hashCampaign("web-portfolio-discipline-hero", { salt: SALT });
+    const url = link({
+      storefront: "ie",
+      type: "album",
+      slug: "discipline",
+      id: "1234567890",
+      campaign: hashed,
+    });
+    expect(url).toContain(`ct=${hashed}`);
+  });
+
+  it("lowercases input before hashing", () => {
+    const lower = hashCampaign("web-portfolio-discipline-hero", { salt: SALT });
+    const upper = hashCampaign("WEB-PORTFOLIO-Discipline-HERO", { salt: SALT });
+    expect(upper).toBe(lower);
+  });
+
+  it("rejects plaintext with disallowed characters", () => {
+    expect(() => hashCampaign("web portfolio hero", { salt: SALT })).toThrow(
+      /invalid characters/,
+    );
+    expect(() => hashCampaign("web_portfolio_hero", { salt: SALT })).toThrow(
+      AffiliateError,
+    );
+  });
+
+  it("rejects plaintext with non-canonical surface", () => {
+    expect(() => hashCampaign("twitter-hero-launch", { salt: SALT })).toThrow(
+      /not canonical/,
+    );
+  });
+
+  it("rejects plaintext with no surface separator", () => {
+    expect(() => hashCampaign("websurfaceonly", { salt: SALT })).toThrow(
+      AffiliateError,
+    );
+  });
+
+  it("rejects plaintext that is just the surface prefix", () => {
+    expect(() => hashCampaign("web-", { salt: SALT })).toThrow(
+      /content after the surface prefix/,
+    );
+  });
+
+  it("rejects empty / non-string plaintext", () => {
+    expect(() => hashCampaign("", { salt: SALT })).toThrow(/required/);
+    expect(() => hashCampaign(null, { salt: SALT })).toThrow(/required/);
+  });
+
+  it("falls back to dev salt when env is unset and DEPLOY_TARGET != public", () => {
+    const out = withEnv(
+      { CAMPAIGN_HASH_SALT: undefined, DEPLOY_TARGET: undefined },
+      () => hashCampaign("web-portfolio-discipline-hero"),
+    );
+    expect(out).toMatch(/^web-[0-9a-f]{10}$/);
+  });
+
+  it("throws when env is unset and DEPLOY_TARGET=public", () => {
+    expect(() =>
+      withEnv(
+        { CAMPAIGN_HASH_SALT: undefined, DEPLOY_TARGET: "public" },
+        () => hashCampaign("web-portfolio-discipline-hero"),
+      ),
+    ).toThrow(/CAMPAIGN_HASH_SALT is required/);
+  });
+
+  it("reads salt from process.env when no explicit salt is passed", () => {
+    const fromEnv = withEnv({ CAMPAIGN_HASH_SALT: SALT }, () =>
+      hashCampaign("web-portfolio-discipline-hero"),
+    );
+    const fromArg = hashCampaign("web-portfolio-discipline-hero", { salt: SALT });
+    expect(fromEnv).toBe(fromArg);
   });
 });

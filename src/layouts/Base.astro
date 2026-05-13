@@ -1,6 +1,7 @@
 ---
 import "@/styles/global.css";
 import SEOHead from "@/components/SEOHead.astro";
+import { link, hashCampaign } from "@affiliate";
 
 interface Props {
   title: string;
@@ -22,6 +23,14 @@ const {
 const siteUrl = import.meta.env.SITE ?? "https://thepoolpat.github.io";
 const canonical = canonicalPath ? `${siteUrl}${import.meta.env.BASE_URL}${canonicalPath}` : undefined;
 const developerToken = import.meta.env.MUSICKIT_DEVELOPER_TOKEN ?? "";
+
+const footerAmHref = link({
+  storefront: "ie",
+  type: "artist",
+  slug: "poolpat",
+  id: "1716939831",
+  campaign: hashCampaign("web-portfolio-footer-artist"),
+});
 ---
 <!doctype html>
 <html lang="en">
@@ -55,7 +64,7 @@ const developerToken = import.meta.env.MUSICKIT_DEVELOPER_TOKEN ?? "";
     <slot />
     <footer>
       &copy; Poolpat &middot; Cork, Ireland &middot;
-      <a href="https://music.apple.com/ie/artist/poolpat/1716939831?at=1000l3chz&app=music&ct=web-portfolio-footer-artist" target="_blank" rel="noopener">Apple Music</a> &middot;
+      <a href={footerAmHref} target="_blank" rel="noopener">Apple Music</a> &middot;
       <a href="https://soundcloud.com/poolpat" target="_blank" rel="noopener">SoundCloud</a> &middot;
       <a href="https://open.spotify.com/artist/4rr3o9anpUXitNXo0W4uX7" target="_blank" rel="noopener">Spotify</a>
     </footer>

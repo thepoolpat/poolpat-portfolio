@@ -28,6 +28,7 @@ jobs:
       - run: npm run build
         env:
           DEPLOY_TARGET: public
+          CAMPAIGN_HASH_SALT: ${{ secrets.CAMPAIGN_HASH_SALT }}
 
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -45,3 +45,5 @@ jobs:
 
       - name: Run vitest
         run: npm test
+        env:
+          CAMPAIGN_HASH_SALT: test-salt-do-not-use-in-prod

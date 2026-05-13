@@ -243,10 +243,11 @@ The Python fetcher runs daily at 07:15 UTC via GitHub Actions:
 
 ## Affiliate Attribution
 
-Every Apple Music link is built through the validated `link()` helper (`packages/affiliate-helper/js/`):
-- Token
-- Campaign format: `web-portfolio-{slug}-{placement}`
-- Max 64 characters, validated at build time
+Every Apple Music link is built through the validated `link()` helper
+(`packages/affiliate-helper/js/`). Campaign tokens are hashed at build time
+(HMAC-SHA256, truncated) so the taxonomy stays out of public URLs. Set
+`CAMPAIGN_HASH_SALT` in your environment to build; the public API is in
+`affiliate-helper.js`.
 
 ## Origin
 
