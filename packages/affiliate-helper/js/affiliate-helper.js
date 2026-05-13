@@ -1,16 +1,18 @@
 /**
  * Apple Music affiliate link builder for Poolpat (token: 1000l3chz).
  *
- * Mirror of AffiliateHelper.swift / affiliate_helper (Python).
- * Cross-language conformance tests live in packages/affiliate-helper/tests/.
+ * Build-time only (Node). Uses node:crypto for opaque campaign-token hashing
+ * so the campaign taxonomy stays out of public URLs.
  *
- * Browser & Node compatible. ES module, no dependencies.
+ * ES module, no third-party deps.
  */
+
+import { createHmac } from "node:crypto";
 
 export const TOKEN = "1000l3chz";
 export const HOST = "music.apple.com";
 export const APP = "music";
-export const MAX_CT_LENGTH = 64;
+export const MAX_CT_LENGTH = 40; // Apple's documented cap
 
 export const ALLOWED_SURFACES = Object.freeze(
   new Set(["web", "social", "ad", "email", "lab", "partner"])
@@ -56,6 +58,56 @@ function validateCt(ct) {
   }
 }
 
+function resolveSalt(explicit) {
+  if (explicit) return explicit;
+  const env = process.env.CAMPAIGN_HASH_SALT;
+  if (env) return env;
+  if (process.env.DEPLOY_TARGET === "public") {
+    throw new AffiliateError(
+      "CAMPAIGN_HASH_SALT is required for public builds. Set the env var or pass {salt}."
+    );
+  }
+  return "dev-only-salt";
+}
+
+/**
+ * Hash a plaintext campaign string into an opaque token.
+ * Preserves the surface prefix so the output still passes validateCt;
+ * replaces everything after it with HMAC-SHA256 truncated to 10 hex chars.
+ *
+ * @param {string} plaintext e.g. "web-portfolio-discipline-hero"
+ * @param {{salt?: string}} [opts]
+ * @returns {string} e.g. "web-a1b2c3d4e5"
+ */
+export function hashCampaign(plaintext, { salt } = {}) {
+  if (typeof plaintext !== "string" || !plaintext) {
+    throw new AffiliateError("hashCampaign: plaintext is required.");
+  }
+  const lowered = plaintext.toLowerCase();
+  if (!CT_CHARS_RE.test(lowered)) {
+    throw new AffiliateError(
+      `hashCampaign: plaintext '${plaintext}' has invalid characters. Allowed: a-z, 0-9, hyphen.`
+    );
+  }
+  const idx = lowered.indexOf("-");
+  if (idx < 0) {
+    throw new AffiliateError("hashCampaign: plaintext needs a surface prefix (e.g. 'web-...').");
+  }
+  const surface = lowered.slice(0, idx);
+  const rest = lowered.slice(idx + 1);
+  if (!ALLOWED_SURFACES.has(surface)) {
+    throw new AffiliateError(
+      `hashCampaign: surface '${surface}' is not canonical. Allowed: ${[...ALLOWED_SURFACES].sort()}`
+    );
+  }
+  if (!rest) {
+    throw new AffiliateError("hashCampaign: plaintext needs content after the surface prefix.");
+  }
+  const resolvedSalt = resolveSalt(salt);
+  const hash = createHmac("sha256", resolvedSalt).update(rest).digest("hex").slice(0, 10);
+  return `${surface}-${hash}`;
+}
+
 /**
  * Build a validated Apple Music affiliate URL.
  * @param {object} args
@@ -72,8 +124,7 @@ export function link({ storefront, type, slug, id, campaign }) {
   validateCt(campaign);
   const safeSlug = slug || "_";
   const ct = campaign.toLowerCase();
-  // Manually compose query — URLSearchParams encodes hyphens identically across runtimes,
-  // matching Swift/Python output byte-for-byte.
+  // Manually compose query — keep at, app, ct in a fixed deterministic order.
   return `https://${HOST}/${storefront}/${type}/${safeSlug}/${id}?at=${TOKEN}&app=${APP}&ct=${ct}`;
 }
 

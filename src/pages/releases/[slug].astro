@@ -3,6 +3,7 @@ import Base from "@/layouts/Base.astro";
 import ListenButton from "@/components/ListenButton.astro";
 import ChartBadge from "@/components/ChartBadge.astro";
 import releases from "@/data/releases.json";
+import { hashCampaign } from "@affiliate";
 
 export function getStaticPaths() {
   return releases.map((r) => ({
@@ -74,7 +75,7 @@ const albumJsonLd = {
     type={r.type as "album"}
     slug={r.slug}
     id={r.id}
-    campaign={`web-portfolio-${r.slug}-hero`}
+    campaign={hashCampaign(`web-portfolio-${r.slug}-hero`)}
   />
 
   {r.sections?.map((s) => (
@@ -98,7 +99,7 @@ const albumJsonLd = {
             type="song"
             slug={t.slug}
             id={t.id}
-            campaign={`web-portfolio-${r.slug}-t${i + 1}`}
+            campaign={hashCampaign(`web-portfolio-${r.slug}-t${i + 1}`)}
           />
         </li>
       ))}
@@ -118,7 +119,7 @@ const albumJsonLd = {
       type={r.type as "album"}
       slug={r.slug}
       id={r.id}
-      campaign={`web-portfolio-${r.slug}-cta`}
+      campaign={hashCampaign(`web-portfolio-${r.slug}-cta`)}
     >
       Listen to the Full Album on Apple Music
     </ListenButton>
