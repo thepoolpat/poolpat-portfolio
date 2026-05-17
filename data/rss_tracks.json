@@ -3,9 +3,17 @@
   "soundcloud_user_id": 3265651,
   "artist": "Poolpat",
   "link": "https://ffm.bio/poolpat",
-  "last_build_date": "2026-05-12T17:52:17Z",
-  "total_tracks_in_feed": 22,
+  "last_build_date": "2026-05-17T08:14:19Z",
+  "total_tracks_in_feed": 23,
   "tracks": [
+    {
+      "title": "Seven Nation Army",
+      "date": "Sat, 16 May 2026 17:34:06 +0000",
+      "url": "https://soundcloud.com/poolpat/seven-nation-army",
+      "duration": "00:04:13",
+      "stream_url": "https://feeds.soundcloud.com/stream/2321629853-poolpat-seven-nation-army.mp3",
+      "artwork": "https://i1.sndcdn.com/artworks-6VIdOFdJpom8vOm6-ZGdVyA-t3000x3000.jpg"
+    },
     {
       "title": "Folks Now!",
       "date": "Sat, 13 Dec 2025 00:00:03 +0000",
