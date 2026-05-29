@@ -381,8 +381,14 @@ def fetch_spotify_all(existing_sp: dict) -> tuple[dict, bool]:
 
             print(f"  Found {len(track_ids)} tracks by Poolpat")
 
-            for i in range(0, len(list(track_ids)), 50):
-                batch = list(track_ids)[i:i+50]
+            # NOTE: this public-token catalog path uses raw requests.get rather
+            # than SpotifyClient. A full swap (typed retry/429 handling) is
+            # deferred: the orchestration tests mock requests.get by exact call
+            # sequence, the client uses a Session those mocks don't intercept,
+            # and this weekly fetch already preserves existing data on failure.
+            track_id_list = list(track_ids)
+            for i in range(0, len(track_id_list), 50):
+                batch = track_id_list[i:i + 50]
                 resp = requests.get(
                     "https://api.spotify.com/v1/tracks",
                     headers=api_headers,
