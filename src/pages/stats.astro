@@ -3,6 +3,7 @@ import Base from "@/layouts/Base.astro";
 import StatCard from "@/components/StatCard.astro";
 import playsRaw from "@data/plays.json";
 import historyRaw from "@data/history.csv?raw";
+import yearlyRaw from "@data/play_history_yearly.json";
 
 let playlistsData: any = { playlists: [] };
 try {
@@ -65,21 +66,58 @@ function projectSeries(arr: number[]): (number | null)[] {
   return arr.map((v) => (!v || v <= 0 ? null : v));
 }
 
-const histRows = parseCsvRows(historyRaw as string);
+// ── Curated yearly spine (authoritative history) ──────────────────────────
+// history.csv only carries trustworthy cross-platform totals from 2026-05-08
+// on. Earlier 2026 rows undercount every platform: SoundCloud track discovery
+// was still incomplete, and the Spotify / Apple Music figures were being
+// backfilled, so they sit *below* the true year-end cumulative. For the run-up
+// before that we use data/play_history_yearly.json — per-year plays read from
+// the SoundCloud Insights "All Platforms" dashboard — as cumulative year-end
+// points. (Each platform's annual values sum to its all-time total.)
+const yearly = (yearlyRaw as any).annual_plays || {};
+const nowMs = data.last_updated ? new Date(data.last_updated).getTime() : Date.now();
+const nowYear = new Date(nowMs).getUTCFullYear();
+function spinePoints(annual: Record<string, number> = {}): { x: number; y: number }[] {
+  const years = Object.keys(annual).map(Number).filter((y) => Number.isFinite(y)).sort((a, b) => a - b);
+  let cum = 0;
+  const pts: { x: number; y: number }[] = [];
+  for (const y of years) {
+    cum += annual[String(y)] || 0;
+    if (y < nowYear) pts.push({ x: Date.UTC(y, 6, 2), y: cum }); // plot the year's cumulative at the year's MIDPOINT, not Dec 31 — otherwise it lands on the Jan-of-next-year gridline and Spotify/Apple Music (first year 2023) look like they start in Jan 2024 instead of 2023
+  }
+  return pts;
+}
+
+// ── Live tail from history.csv: one row per UTC day (last reading wins), but
+// only from the first all-platform-reliable capture onward. New weekly fetches
+// land after this date, so the tail keeps extending itself automatically.
+const FIRST_RELIABLE_TS = Date.UTC(2026, 4, 8); // 2026-05-08 — see note above
 const dayMap = new Map<string, Record<string, string>>();
-for (const r of histRows) {
+for (const r of parseCsvRows(historyRaw as string)) {
   const d = new Date(r.timestamp);
-  if (isNaN(d.getTime())) continue;
+  if (isNaN(d.getTime()) || d.getTime() < FIRST_RELIABLE_TS) continue;
   dayMap.set(d.toISOString().slice(0, 10), r); // last reading of the day wins
 }
 const dayKeys = [...dayMap.keys()].sort();
-const daily = dayKeys.map((k) => dayMap.get(k)!);
-const xs = dayKeys.map((k) => new Date(k + "T00:00:00Z").getTime());
-const toPoints = (ys: (number | null)[]) => xs.map((x, i) => ({ x, y: ys[i] }));
+const tailRows = dayKeys.map((k) => dayMap.get(k)!);
+const tailXs = dayKeys.map((k) => new Date(k + "T00:00:00Z").getTime());
+
+// ── Compose: yearly spine ++ live tail ++ current total (matches the tiles) ─
+// projectSeries keeps the no-monotonic-forcing rule: a real restatement (e.g.
+// the SoundCloud purge in the recent tail) still shows as a genuine dip.
+function buildSeries(annualKey: string, csvCol: string, currentTotal: number): { x: number; y: number | null }[] {
+  const pts = [
+    ...spinePoints(yearly[annualKey]),
+    ...tailXs.map((x, i) => ({ x, y: toInt(tailRows[i][csvCol]) })),
+    { x: nowMs, y: currentTotal },
+  ].sort((a, b) => a.x - b.x);
+  const ys = projectSeries(pts.map((p) => p.y));
+  return pts.map((p, i) => ({ x: p.x, y: ys[i] }));
+}
 const chartPoints = {
-  sc: toPoints(projectSeries(daily.map((r) => toInt(r.soundcloud_total_plays)))),
-  sp: toPoints(projectSeries(daily.map((r) => toInt(r.spotify_total_streams || r.spotify_total_popularity)))),
-  am: toPoints(projectSeries(daily.map((r) => toInt(r.apple_music_total_plays)))),
+  sc: buildSeries("soundcloud", "soundcloud_total_plays", scTotal),
+  sp: buildSeries("spotify", "spotify_total_streams", spTotal),
+  am: buildSeries("apple_music", "apple_music_total_plays", amTotal),
 };
 
 const playlists: any[] = playlistsData.playlists || [];
