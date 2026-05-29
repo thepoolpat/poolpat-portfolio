@@ -33,7 +33,50 @@ const scSorted = sortedTracks(scTracks);
 const spSorted = sortedTracks(spTracks);
 const amSorted = sortedTracks(amTracks);
 
-const encodedHistory = encodeURIComponent(historyRaw);
+// ── Build-time chart series ───────────────────────────────────────────────
+// Parse history.csv, aggregate to one row per UTC day, and project a monotonic
+// cumulative series here at build time. The client receives only the final
+// point arrays as compact JSON — no CSV parsing / decoding in the browser.
+function parseCsvRows(raw: string): Record<string, string>[] {
+  const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(",").map((h) => h.trim());
+  return lines.slice(1).map((line) => {
+    const values = line.split(",").map((v) => v.trim());
+    const row: Record<string, string> = {};
+    headers.forEach((h, i) => { row[h] = values[i] ?? ""; });
+    return row;
+  });
+}
+function toInt(v: string | undefined): number {
+  const n = parseInt(String(v || "").replace(/[^\d]/g, ""), 10);
+  return Number.isFinite(n) ? n : 0;
+}
+// Zeros are treated as MISSING DATA (null), not "still at the previous max":
+// the old forward-clamp produced a flat plateau then a vertical jump when real
+// data finally arrived (e.g. AM stuck at 103 until the first AM4A capture in
+// April 2026). nulls + spanGaps:true draw one smooth diagonal across the gap.
+function projectMonotonic(arr: number[]): (number | null)[] {
+  let max = 0;
+  return arr.map((v) => { if (!v || v <= 0) return null; max = Math.max(max, v); return max; });
+}
+
+const histRows = parseCsvRows(historyRaw as string);
+const dayMap = new Map<string, Record<string, string>>();
+for (const r of histRows) {
+  const d = new Date(r.timestamp);
+  if (isNaN(d.getTime())) continue;
+  dayMap.set(d.toISOString().slice(0, 10), r); // last reading of the day wins
+}
+const dayKeys = [...dayMap.keys()].sort();
+const daily = dayKeys.map((k) => dayMap.get(k)!);
+const xs = dayKeys.map((k) => new Date(k + "T00:00:00Z").getTime());
+const toPoints = (ys: (number | null)[]) => xs.map((x, i) => ({ x, y: ys[i] }));
+const chartPoints = {
+  sc: toPoints(projectMonotonic(daily.map((r) => toInt(r.soundcloud_total_plays)))),
+  sp: toPoints(projectMonotonic(daily.map((r) => toInt(r.spotify_total_streams || r.spotify_total_popularity)))),
+  am: toPoints(projectMonotonic(daily.map((r) => toInt(r.apple_music_total_plays)))),
+};
 
 const playlists: any[] = playlistsData.playlists || [];
 const totalPlaylistReach = playlists.reduce((a: number, p: any) => a + (p.followers || 0), 0);
@@ -59,7 +102,7 @@ const playlistFetchedAt = playlistsData.fetched_at
     <h2>Play Count Trends</h2>
     <div class="chart-container">
       <canvas id="plays-chart" role="img" aria-label="Line chart showing play count trends over time for SoundCloud, Spotify, and Apple Music"></canvas>
-      <div id="chart-data" data-history={encodedHistory} style="display:none"></div>
+      <script id="chart-data" type="application/json" is:inline set:html={JSON.stringify(chartPoints)}></script>
     </div>
   </section>
 
@@ -73,75 +116,19 @@ const playlistFetchedAt = playlistsData.fetched_at
     Chart.register(LineController, LineElement, PointElement, LogarithmicScale, TimeScale, Legend, Title, Tooltip);
 
     (async () => {
-      const dataEl = document.getElementById("chart-data");
+      // Series are computed at build time (see frontmatter) and shipped as
+      // compact JSON — no client-side CSV parsing, aggregation, or decoding.
+      const el = document.getElementById("chart-data");
       const canvas = document.getElementById("plays-chart");
+      const { sc, sp, am } = JSON.parse(el?.textContent || '{"sc":[],"sp":[],"am":[]}');
 
-      function parseCsv(raw) {
-        const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-        if (lines.length < 2) return [];
-        const headers = lines[0].split(",").map(h => h.trim());
-        return lines.slice(1).map(line => {
-          const values = line.split(",").map(v => v.trim());
-          const row = {};
-          headers.forEach((h, i) => { row[h] = values[i] !== undefined ? values[i] : ""; });
-          return row;
-        });
-      }
-
-      function toInt(v) {
-        const n = parseInt(String(v || "").replace(/[^\d]/g, ""), 10);
-        return isFinite(n) ? n : 0;
-      }
-
-      // Build a monotonic series for the chart: zeros are treated as MISSING
-      // DATA (null), not as "still at the previous max". The previous behavior
-      // clamped the running max forward across zeros, which produced a flat
-      // plateau followed by a vertical jump when real data finally arrived
-      // (e.g. AM stuck at 103 from Jan 2024 until the first AM4A capture in
-      // April 2026). With nulls + spanGaps: true the chart draws a single
-      // smooth diagonal from the last real point to the next.
-      function projectMonotonic(arr) {
-        let max = 0;
-        return arr.map(v => {
-          if (!v || v <= 0) return null;
-          max = Math.max(max, v);
-          return max;
-        });
-      }
-
-      const encoded = dataEl?.dataset?.history || "";
-      const raw = decodeURIComponent(encoded);
-      const rows = parseCsv(raw);
-
-      if (!rows.length) {
+      if (!sc.length && !sp.length && !am.length) {
         const p = document.createElement("p");
         p.className = "muted";
         p.textContent = "Trend data is not available yet.";
         canvas.replaceWith(p);
         return;
       }
-
-      // Aggregate to one row per UTC day (last reading wins). The raw CSV has
-      // many intra-day samples — without this the time scale would draw a
-      // dense forest of same-day points.
-      const dayMap = new Map();
-      for (const r of rows) {
-        const d = new Date(r.timestamp);
-        if (isNaN(d)) continue;
-        dayMap.set(d.toISOString().slice(0, 10), r);
-      }
-      const dayKeys = [...dayMap.keys()].sort();
-      const daily = dayKeys.map(k => dayMap.get(k));
-      const xs = dayKeys.map(k => new Date(k + "T00:00:00Z").getTime());
-
-      const scYs = projectMonotonic(daily.map(r => toInt(r.soundcloud_total_plays)));
-      const spYs = projectMonotonic(daily.map(r => toInt(r.spotify_total_streams || r.spotify_total_popularity)));
-      const amYs = projectMonotonic(daily.map(r => toInt(r.apple_music_total_plays)));
-
-      const toPoints = ys => xs.map((x, i) => ({ x, y: ys[i] }));
-      const sc = toPoints(scYs);
-      const sp = toPoints(spYs);
-      const am = toPoints(amYs);
 
       new Chart(canvas, {
         type: "line",
