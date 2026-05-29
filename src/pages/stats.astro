@@ -63,19 +63,15 @@ const playlistFetchedAt = playlistsData.fetched_at
     </div>
   </section>
 
-  <!-- Pinned + SRI-locked Chart.js (UMD, exposes window.Chart). Hash is for chart.js@4.5.0/dist/chart.umd.min.js -->
-  <script
-    src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js"
-    integrity="sha384-XcdcwHqIPULERb2yDEM4R0XaQKU3YnDsrTmjACBZyfdVVqjh6xQ4/DCMd7XLcA6Y"
-    crossorigin="anonymous"
-  ></script>
-  <!-- Pinned + SRI-locked date-fns adapter (bundled). Required for the time-scale X axis. -->
-  <script
-    src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"
-    integrity="sha384-cVMg8E3QFwTvGCDuK+ET4PD341jF3W8nO1auiXfuZNQkzbUUiBGLsIQUE+b1mxws"
-    crossorigin="anonymous"
-  ></script>
-  <script type="module">
+  <!-- Chart.js is bundled & tree-shaken by Astro (ESM import below). No CDN, no SRI, no window global. -->
+  <script>
+    // @ts-nocheck — bundled client chart code (chart.js + raw DOM access). Kept
+    // unchecked to match its prior inline status; it's plain runtime JS, not typed.
+    import { Chart, LineController, LineElement, PointElement, LogarithmicScale, TimeScale, Legend, Title, Tooltip } from "chart.js";
+    import "chartjs-adapter-date-fns";
+
+    Chart.register(LineController, LineElement, PointElement, LogarithmicScale, TimeScale, Legend, Title, Tooltip);
+
     (async () => {
       const dataEl = document.getElementById("chart-data");
       const canvas = document.getElementById("plays-chart");
@@ -146,38 +142,6 @@ const playlistFetchedAt = playlistsData.fetched_at
       const sc = toPoints(scYs);
       const sp = toPoints(spYs);
       const am = toPoints(amYs);
-
-      // Chart.js + the date-fns adapter both load via sync UMD <script> tags
-      // above this module. Module scripts are deferred, so by the time we run
-      // both globals should already exist. The adapter mutates
-      // Chart._adapters._date in place — verify the adapter actually replaced
-      // the stub before constructing a time-scale chart.
-      function adapterReady() {
-        if (typeof window === "undefined" || !window.Chart) return false;
-        try {
-          const D = window.Chart._adapters && window.Chart._adapters._date;
-          if (!D) return false;
-          new D({}).format(Date.now(), "yyyy");
-          return true;
-        } catch (_) {
-          return false;
-        }
-      }
-      await new Promise((resolve) => {
-        if (adapterReady()) return resolve();
-        const start = Date.now();
-        const tick = setInterval(() => {
-          if (adapterReady()) {
-            clearInterval(tick);
-            resolve();
-          } else if (Date.now() - start > 10000) {
-            clearInterval(tick);
-            resolve(); // bail; new Chart() below will throw a clear error
-          }
-        }, 30);
-      });
-      const Chart = window.Chart;
-      // UMD bundle auto-registers all controllers/scales &mdash; no Chart.register() needed.
 
       new Chart(canvas, {
         type: "line",
