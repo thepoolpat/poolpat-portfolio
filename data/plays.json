@@ -1,6 +1,6 @@
 {
   "artist": "Poolpat",
-  "last_updated": "2026-05-29T12:00:00+00:00",
+  "last_updated": "2026-05-29T22:27:40.500871+00:00",
   "soundcloud": {
     "url": "https://soundcloud.com/poolpat",
     "tracks": {
@@ -42,17 +42,23 @@
       "Collective Suicide (Ft. Otaku Black)": 764,
       "Déjà 30 Piges (feat. Djar One & Jaws) [Remix]": 1355,
       "O'sho | Drogba [x] Poolpat [=] Danilo Milk [~]": 0,
-      "Seven Nation Army": 158
+      "Seven Nation Army": 158,
+      "Cara Mo Bhean Chéile - Freestyle": 260,
+      "Otaku’s Doodle": 372,
+      "Cara mo bhean chéile": 149,
+      "Ça Me Saoule": 756,
+      "Schneck De Traître X L.Stoch": 775,
+      "Déjà 30 Piges (feat. Djar One & Jaws) [Remix]": 1355
     },
     "total_plays": 28544,
     "total_tracks": 47,
     "followers": 131,
     "fetch_status": "success",
-    "last_successful_fetch": "2026-05-24T08:22:43.279566+00:00",
-    "total_plays_all_platforms": 52262,
+    "last_successful_fetch": "2026-05-29T22:27:42.508574+00:00",
     "total_streams_sc": 18635,
     "total_downloads": 3690,
-    "source": "SoundCloud Insights (All Platforms, All Time, 2016-Present)"
+    "source": "SoundCloud Insights (All Platforms, All Time, 2016-Present)",
+    "total_plays_all_platforms": 52262
   },
   "spotify": {
     "url": "https://open.spotify.com/artist/4rr3o9anpUXitNXo0W4uX7",
@@ -83,7 +89,7 @@
     "monthly_listeners": 14,
     "streams_28d": 26,
     "fetch_status": "success",
-    "last_successful_fetch": "2026-05-24T08:22:47.017770+00:00",
+    "last_successful_fetch": "2026-05-29T22:27:44.537710+00:00",
     "auth_method": "user_token",
     "note": "total_streams/monthly_listeners from Spotify for Artists (manual). Track values are popularity scores.",
     "top_tracks_short": [
