@@ -19,7 +19,10 @@ const amTracks = data.apple_music?.tracks || {};
 const scTotal = data.soundcloud?.total_plays || Object.values(scTracks).reduce((a: number, b: any) => a + (b || 0), 0);
 const spTotal = data.spotify?.total_streams || Object.values(spTracks).reduce((a: number, b: any) => a + (b || 0), 0);
 const amTotal = data.apple_music?.total_plays || Object.values(amTracks).reduce((a: number, b: any) => a + (b || 0), 0);
-const grandTotal = data.soundcloud?.total_plays_all_platforms || (scTotal + spTotal + amTotal);
+// Grand total is ALWAYS the sum of the three displayed tiles, so the headline can
+// never drift from its own breakdown. (A stale, manually-entered
+// total_plays_all_platforms previously made the total disagree with the tiles.)
+const grandTotal = scTotal + spTotal + amTotal;
 
 const scFollowers = data.soundcloud?.followers || 0;
 const spMonthly = data.spotify?.monthly_listeners || 0;
@@ -52,13 +55,14 @@ function toInt(v: string | undefined): number {
   const n = parseInt(String(v || "").replace(/[^\d]/g, ""), 10);
   return Number.isFinite(n) ? n : 0;
 }
-// Zeros are treated as MISSING DATA (null), not "still at the previous max":
-// the old forward-clamp produced a flat plateau then a vertical jump when real
-// data finally arrived (e.g. AM stuck at 103 until the first AM4A capture in
-// April 2026). nulls + spanGaps:true draw one smooth diagonal across the gap.
-function projectMonotonic(arr: number[]): (number | null)[] {
-  let max = 0;
-  return arr.map((v) => { if (!v || v <= 0) return null; max = Math.max(max, v); return max; });
+// Zeros are treated as MISSING DATA (null): nulls + spanGaps:true draw one
+// smooth diagonal across the gap (e.g. AM stuck at 103 until the first AM4A
+// capture in April 2026) instead of a flat plateau then a vertical jump.
+// We intentionally do NOT force a monotonic (running-max) projection — a
+// legitimate downward restatement (e.g. a SoundCloud purge of invalid plays)
+// must show as a real decrease rather than being clamped up to the prior peak.
+function projectSeries(arr: number[]): (number | null)[] {
+  return arr.map((v) => (!v || v <= 0 ? null : v));
 }
 
 const histRows = parseCsvRows(historyRaw as string);
@@ -73,9 +77,9 @@ const daily = dayKeys.map((k) => dayMap.get(k)!);
 const xs = dayKeys.map((k) => new Date(k + "T00:00:00Z").getTime());
 const toPoints = (ys: (number | null)[]) => xs.map((x, i) => ({ x, y: ys[i] }));
 const chartPoints = {
-  sc: toPoints(projectMonotonic(daily.map((r) => toInt(r.soundcloud_total_plays)))),
-  sp: toPoints(projectMonotonic(daily.map((r) => toInt(r.spotify_total_streams || r.spotify_total_popularity)))),
-  am: toPoints(projectMonotonic(daily.map((r) => toInt(r.apple_music_total_plays)))),
+  sc: toPoints(projectSeries(daily.map((r) => toInt(r.soundcloud_total_plays)))),
+  sp: toPoints(projectSeries(daily.map((r) => toInt(r.spotify_total_streams || r.spotify_total_popularity)))),
+  am: toPoints(projectSeries(daily.map((r) => toInt(r.apple_music_total_plays)))),
 };
 
 const playlists: any[] = playlistsData.playlists || [];
@@ -86,7 +90,7 @@ const playlistFetchedAt = playlistsData.fetched_at
 ---
 <Base title="Poolpat &mdash; Play Stats" description="Live play count dashboard for Poolpat across SoundCloud, Spotify, and Apple Music." canonicalPath="/stats/">
   <h1>Play Stats</h1>
-  <p class="muted">Updated daily &middot; Last: {lastUpdated}</p>
+  <p class="muted">Updates every 24&ndash;48 hours from the SoundCloud Insights dashboard &middot; Last: {lastUpdated}</p>
 
   <div class="stats-grid">
     <StatCard label="Total Plays" value={grandTotal} sub="All platforms" />

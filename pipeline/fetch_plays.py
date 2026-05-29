@@ -224,8 +224,11 @@ def fetch_soundcloud_all(existing_sc: dict) -> tuple[dict, list[dict], bool]:
             "fetch_status": "success",
             "last_successful_fetch": datetime.now(timezone.utc).isoformat(),
         }
-        # Preserve manually-entered Insights metrics (not available via API)
-        for key in ("total_plays_all_platforms", "total_listeners",
+        # Preserve manually-entered Insights metrics (not available via API).
+        # NB: total_plays_all_platforms is intentionally NOT preserved here — it is
+        # recomputed in main() as the sum of the three platform totals so it can
+        # never go stale relative to soundcloud.total_plays.
+        for key in ("total_listeners",
                     "total_streams_sc", "total_downloads", "source"):
             if key in existing_sc:
                 sc_data[key] = existing_sc[key]
@@ -683,12 +686,16 @@ def main():
         "apple_music": am_data,
     }
 
-    save_plays_json(data)
-    append_history_csv(data)
-
+    # Grand total = sum of the three platform totals (single source of truth).
+    # Recomputed every run and stored so the site never reads a stale value.
     sc_t = sc_data.get("total_plays", 0) or 0
     sp_t = sp_data.get("total_streams", 0) or 0
     am_t = am_data.get("total_plays", 0) or 0
+    sc_data["total_plays_all_platforms"] = sc_t + sp_t + am_t
+
+    save_plays_json(data)
+    append_history_csv(data)
+
     print(f"\nGrand total: {sc_t + sp_t + am_t:,}")
     print(f"  SC: {sc_t:,} ({len(sc_data.get('tracks', {}))} tracks) [{sc_data.get('fetch_status')}]")
     print(f"  SP: {sp_t:,} ({len(sp_data.get('tracks', {}))} tracks) [{sp_data.get('fetch_status')}]")
