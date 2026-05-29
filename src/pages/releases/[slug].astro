@@ -17,6 +17,9 @@ const r = release;
 const base = import.meta.env.BASE_URL;
 const site = import.meta.env.SITE ?? "https://thepoolpat.github.io";
 const artUrl = `${base}${r.artwork}`;
+// Page renders WebP; social cards (og:image/twitter:image) use a JPEG sibling —
+// some link scrapers still don't reliably support WebP. See public/artwork/*.jpg.
+const ogImageUrl = artUrl.replace(/\.webp$/, ".jpg");
 const safeCredits = r.credits?.replace(/<(?!\/?(?:strong|em|br)\b)[^>]*>/gi, "") ?? "";
 
 function toIsoDuration(d?: string): string | undefined {
@@ -50,7 +53,7 @@ const albumJsonLd = {
 <Base
   title={`${r.title} — Poolpat`}
   description={r.tagline}
-  ogImage={artUrl}
+  ogImage={ogImageUrl}
   ogType="music.album"
   canonicalPath={`/releases/${r.slug}/`}
   structuredData={albumJsonLd}
