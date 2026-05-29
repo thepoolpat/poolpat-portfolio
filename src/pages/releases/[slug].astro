@@ -2,13 +2,14 @@
 import Base from "@/layouts/Base.astro";
 import ListenButton from "@/components/ListenButton.astro";
 import ChartBadge from "@/components/ChartBadge.astro";
-import releases from "@/data/releases.json";
+import { getCollection } from "astro:content";
 import { hashCampaign } from "@affiliate";
 
-export function getStaticPaths() {
-  return releases.map((r) => ({
-    params: { slug: r.slug },
-    props: { release: r },
+export async function getStaticPaths() {
+  const releases = await getCollection("releases");
+  return releases.map((entry) => ({
+    params: { slug: entry.data.slug },
+    props: { release: entry.data },
   }));
 }
 
@@ -42,7 +43,7 @@ const albumJsonLd = {
   image: `${site}${artUrl}`,
   ...(r.releaseDate ? { datePublished: r.releaseDate } : {}),
   numTracks: r.tracks?.length,
-  track: r.tracks?.map((t: any, i: number) => ({
+  track: r.tracks?.map((t, i) => ({
     "@type": "MusicRecording",
     position: i + 1,
     name: t.title,

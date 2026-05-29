@@ -3,7 +3,8 @@ import Base from "@/layouts/Base.astro";
 import ListenButton from "@/components/ListenButton.astro";
 import ChartBadge from "@/components/ChartBadge.astro";
 import StatCard from "@/components/StatCard.astro";
-import releases from "@/data/releases.json";
+import ReleaseCard from "@/components/ReleaseCard.astro";
+import { getCollection } from "astro:content";
 import playsRaw from "@data/plays.json";
 import { link, hashCampaign } from "@affiliate";
 
@@ -11,6 +12,7 @@ const data = playsRaw as any;
 const base = import.meta.env.BASE_URL;
 const site = import.meta.env.SITE ?? "https://thepoolpat.github.io";
 const art = (r: any) => `${base}${r.artwork}`;
+const releases = (await getCollection("releases")).map((e) => e.data).sort((a, b) => a.order - b.order);
 const scTotal = data.soundcloud?.total_plays || 0;
 const spTotal = data.spotify?.total_streams || 0;
 const amTotal = data.apple_music?.total_plays || 0;
@@ -127,17 +129,7 @@ const artistJsonLd = {
   <section class="section">
     <h2>Discography</h2>
     <div class="releases">
-      {releases.slice(0, 4).map((r) => (
-        <a class="release-card" href={`${import.meta.env.BASE_URL}releases/${r.slug}/`}>
-          {r.isCollab && <span class="badge">Collab</span>}
-          {r.charts?.length && <span class="badge" style="left:.6rem;right:auto;background:rgba(250,35,59,.85)">Charted</span>}
-          <div class="cover" style={`background-image:url('${art(r)}')`}></div>
-          <div class="info">
-            <span class="title">{r.title}</span>
-            <span class="date">{r.typeLabel}</span>
-          </div>
-        </a>
-      ))}
+      {releases.slice(0, 4).map((r) => <ReleaseCard release={r} />)}
     </div>
     <p class="muted" style="text-align:center;margin-top:.5rem">
       <a href={`${import.meta.env.BASE_URL}discography/`}>View full discography &rarr;</a>
