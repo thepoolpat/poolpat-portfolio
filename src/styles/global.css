@@ -11,6 +11,8 @@
   --accent-sp: #1db954;
   --accent-am: #fa233b;
   --accent-blue: #58a6ff;
+  --map-empty: #2a2a2e;
+  --map-stroke: rgba(255,255,255,0.14);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
   color-scheme: dark;
 }
@@ -18,6 +20,7 @@
   :root {
     --bg: #fafafa; --fg: #1d1d1f; --muted: #6e6e73;
     --card: #ffffff; --border: rgba(0,0,0,0.08); color-scheme: light;
+    --map-empty: #dcdce1; --map-stroke: rgba(0,0,0,0.18);
   }
 }
 * { box-sizing: border-box; }
@@ -105,6 +108,25 @@ code { background: var(--card); padding: .15rem .4rem; border-radius: 4px; font-
 .chart-container { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin: 1.5rem 0; }
 .chart-container canvas { width: 100% !important; max-height: 350px; }
 
+/* Listener map — homepage choropleth (build-time static SVG, no JS) */
+.listener-map { margin: 1.5rem 0 0; }
+.map-title { font-size: 1rem; font-weight: 600; margin: 0 0 .6rem; font-family: "SF Pro Display", -apple-system, sans-serif; letter-spacing: -0.01em; }
+.map-title .muted { font-weight: 400; }
+.listener-map svg { width: 100%; height: auto; display: block; background: transparent; border-radius: var(--radius); }
+.listener-map .land { transition: stroke .15s ease; }
+.listener-map .has-data:hover { stroke: var(--fg); stroke-width: 0.9px; }
+.map-caption { display: flex; align-items: center; justify-content: space-between; gap: .6rem 1.5rem; flex-wrap: wrap; margin-top: .7rem; font-size: .8rem; }
+.map-legend { display: inline-flex; align-items: center; gap: .5rem; }
+.map-legend-label { color: var(--muted); font-size: .75rem; }
+.map-legend-bar { width: 120px; height: 10px; border-radius: 5px; background: linear-gradient(90deg, rgba(255,85,0,.18), rgba(255,85,0,1)); }
+
+/* SoundCloud Top Locations — two-column flag lists (stats page) */
+.locations-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem 1.5rem; }
+.location-col h3 { margin: .2rem 0 0; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+.location-col .tracks { margin-top: .6rem; }
+.location-col .track { gap: .75rem; }
+.flag { width: 24px; height: 18px; flex-shrink: 0; border-radius: 3px; object-fit: cover; box-shadow: 0 0 0 1px var(--border); background: var(--card); }
+
 .embed-section { margin: 2rem 0; }
 .embed-section iframe { width: 100%; border: none; border-radius: var(--radius); }
 
@@ -145,6 +167,8 @@ footer { color: var(--muted); font-size: .85rem; text-align: center; padding: 3r
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .stat-card .value { font-size: 1.5rem; }
   .chart-container canvas { max-height: 250px; }
+  .locations-grid { grid-template-columns: 1fr; gap: .5rem; }
+  .map-legend-bar { width: 90px; }
   .hero-stage { min-height: 300px; }
   .releases { grid-template-columns: repeat(2, 1fr); }
   .social-icon { width: 36px; height: 36px; }

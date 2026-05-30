@@ -4,6 +4,7 @@ import StatCard from "@/components/StatCard.astro";
 import playsRaw from "@data/plays.json";
 import historyRaw from "@data/history.csv?raw";
 import yearlyRaw from "@data/play_history_yearly.json";
+import scLocations from "@data/sc_locations.json";
 
 let playlistsData: any = { playlists: [] };
 try {
@@ -36,6 +37,14 @@ function sortedTracks(tracks: Record<string, number>): [string, number][] {
 const scSorted = sortedTracks(scTracks);
 const spSorted = sortedTracks(spTracks);
 const amSorted = sortedTracks(amTracks);
+
+// ── SoundCloud Top Locations (flag display) ────────────────────────────────
+const base = import.meta.env.BASE_URL;
+const scLoc = scLocations as any;
+const scCities = (scLoc.cities || []) as { name: string; country: string; plays: number; approx?: boolean }[];
+const scCountriesList = (scLoc.countries || []) as { name: string; code: string; plays: number; approx?: boolean }[];
+const flagSrc = (code: string) => `${base}flags/${code.toLowerCase()}.svg`;
+const playCount = (p: number, approx?: boolean) => `${approx ? "~" : ""}${p.toLocaleString("en-IE")}`;
 
 // ── Build-time chart series ───────────────────────────────────────────────
 // Parse history.csv, aggregate to one row per UTC day, and project a monotonic
@@ -296,6 +305,39 @@ const playlistFetchedAt = playlistsData.fetched_at
     })();
   </script>
 
+  <section class="section">
+    <h2>Top Locations &mdash; SoundCloud</h2>
+    <p class="muted" style="margin-bottom:1rem">Top cities &amp; countries by all-time plays &middot; {scLoc.summary?.plays?.toLocaleString("en-IE")} SoundCloud plays total</p>
+    <div class="locations-grid">
+      <div class="location-col">
+        <h3>Cities</h3>
+        <ul class="tracks">
+          {scCities.slice(0, 20).map((c, i) => (
+            <li class="track">
+              <span class="track-num">{i + 1}</span>
+              <img class="flag" src={flagSrc(c.country)} alt="" width="24" height="18" loading="lazy" decoding="async" />
+              <span class="track-title">{c.name}</span>
+              <span class="track-duration" style="color:var(--accent-sc)">{playCount(c.plays, c.approx)}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div class="location-col">
+        <h3>Countries</h3>
+        <ul class="tracks">
+          {scCountriesList.slice(0, 20).map((c, i) => (
+            <li class="track">
+              <span class="track-num">{i + 1}</span>
+              <img class="flag" src={flagSrc(c.code)} alt="" width="24" height="18" loading="lazy" decoding="async" />
+              <span class="track-title">{c.name}</span>
+              <span class="track-duration" style="color:var(--accent-sc)">{playCount(c.plays, c.approx)}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </section>
+
   {playlists.length > 0 && (
     <section class="section">
       <h2>Playlist Placements &mdash; Spotify</h2>
@@ -319,7 +361,7 @@ const playlistFetchedAt = playlistsData.fetched_at
   <section class="section">
     <h2>Top Tracks &mdash; SoundCloud</h2>
     <ul class="tracks">
-      {scSorted.slice(0, 15).map(([title, plays], i) => (
+      {scSorted.slice(0, 5).map(([title, plays], i) => (
         <li class="track">
           <span class="track-num">{i + 1}</span>
           <span class="track-title">{title}</span>
@@ -332,7 +374,7 @@ const playlistFetchedAt = playlistsData.fetched_at
   <section class="section">
     <h2>Top Tracks &mdash; Spotify</h2>
     <ul class="tracks">
-      {spSorted.slice(0, 15).map(([title, plays], i) => (
+      {spSorted.slice(0, 5).map(([title, plays], i) => (
         <li class="track">
           <span class="track-num">{i + 1}</span>
           <span class="track-title">{title}</span>
@@ -345,7 +387,7 @@ const playlistFetchedAt = playlistsData.fetched_at
   <section class="section">
     <h2>Top Tracks &mdash; Apple Music</h2>
     <ul class="tracks">
-      {amSorted.slice(0, 15).map(([title, plays], i) => (
+      {amSorted.slice(0, 5).map(([title, plays], i) => (
         <li class="track">
           <span class="track-num">{i + 1}</span>
           <span class="track-title">{title}</span>
