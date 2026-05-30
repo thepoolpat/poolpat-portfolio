@@ -4,7 +4,7 @@ import StatCard from "@/components/StatCard.astro";
 import playsRaw from "@data/plays.json";
 import historyRaw from "@data/history.csv?raw";
 import yearlyRaw from "@data/play_history_yearly.json";
-import scLocations from "@data/sc_locations.json";
+import { countries as geoCountries, cities as geoCities, combinedTotalPlays, countryCount } from "@/lib/geo";
 
 let playlistsData: any = { playlists: [] };
 try {
@@ -38,13 +38,14 @@ const scSorted = sortedTracks(scTracks);
 const spSorted = sortedTracks(spTracks);
 const amSorted = sortedTracks(amTracks);
 
-// ── SoundCloud Top Locations (flag display) ────────────────────────────────
+// ── Top Locations (flag display) — SoundCloud + Apple Music, summed in @/lib/geo ─
 const base = import.meta.env.BASE_URL;
-const scLoc = scLocations as any;
-const scCities = (scLoc.cities || []) as { name: string; country: string; plays: number; approx?: boolean }[];
-const scCountriesList = (scLoc.countries || []) as { name: string; code: string; plays: number; approx?: boolean }[];
+const fmtN = (n: number) => n.toLocaleString("en-IE");
 const flagSrc = (code: string) => `${base}flags/${code.toLowerCase()}.svg`;
-const playCount = (p: number, approx?: boolean) => `${approx ? "~" : ""}${p.toLocaleString("en-IE")}`;
+const playCount = (p: number, approx?: boolean) => `${approx ? "~" : ""}${fmtN(p)}`;
+// per-platform breakdown for the row's hover tooltip
+const breakdown = (sc: number, am: number) =>
+  [sc ? `SoundCloud ${fmtN(sc)}` : "", am ? `Apple Music ${fmtN(am)}` : ""].filter(Boolean).join(" + ");
 
 // ── Build-time chart series ───────────────────────────────────────────────
 // Parse history.csv, aggregate to one row per UTC day, and project a monotonic
@@ -306,16 +307,18 @@ const playlistFetchedAt = playlistsData.fetched_at
   </script>
 
   <section class="section">
-    <h2>Top Locations &mdash; SoundCloud</h2>
-    <p class="muted" style="margin-bottom:1rem">Top cities &amp; countries by all-time plays &middot; {scLoc.summary?.plays?.toLocaleString("en-IE")} SoundCloud plays total</p>
+    <h2>Top Locations &mdash; SoundCloud + Apple Music</h2>
+    <p class="muted" style="margin-bottom:1rem">Combined plays by listener location &middot; {fmtN(combinedTotalPlays)} all-time (SoundCloud + Apple Music) &middot; {countryCount} countries</p>
     <div class="locations-grid">
       <div class="location-col">
         <h3>Cities</h3>
         <ul class="tracks">
-          {scCities.slice(0, 20).map((c, i) => (
-            <li class="track">
+          {geoCities.slice(0, 20).map((c, i) => (
+            <li class="track" title={breakdown(c.sc, c.am)}>
               <span class="track-num">{i + 1}</span>
-              <img class="flag" src={flagSrc(c.country)} alt="" width="24" height="18" loading="lazy" decoding="async" />
+              {c.country
+                ? <img class="flag" src={flagSrc(c.country)} alt="" width="24" height="18" loading="lazy" decoding="async" />
+                : <span class="flag" aria-hidden="true"></span>}
               <span class="track-title">{c.name}</span>
               <span class="track-duration" style="color:var(--accent-sc)">{playCount(c.plays, c.approx)}</span>
             </li>
@@ -325,8 +328,8 @@ const playlistFetchedAt = playlistsData.fetched_at
       <div class="location-col">
         <h3>Countries</h3>
         <ul class="tracks">
-          {scCountriesList.slice(0, 20).map((c, i) => (
-            <li class="track">
+          {geoCountries.slice(0, 20).map((c, i) => (
+            <li class="track" title={breakdown(c.sc, c.am)}>
               <span class="track-num">{i + 1}</span>
               <img class="flag" src={flagSrc(c.code)} alt="" width="24" height="18" loading="lazy" decoding="async" />
               <span class="track-title">{c.name}</span>
