@@ -7,7 +7,7 @@ import ReleaseCard from "@/components/ReleaseCard.astro";
 import { getCollection } from "astro:content";
 import playsRaw from "@data/plays.json";
 import worldGeo from "@data/world-geo.json";
-import scLocations from "@data/sc_locations.json";
+import { countries as geoCountries, combinedTotalPlays, countryCount } from "@/lib/geo";
 import { link, hashCampaign } from "@affiliate";
 
 const data = playsRaw as any;
@@ -20,29 +20,27 @@ const spTotal = data.spotify?.total_streams || 0;
 const amTotal = data.apple_music?.total_plays || 0;
 const grandTotal = scTotal + spTotal + amTotal;
 
-// ── Listener map (SoundCloud "Top Locations") ──────────────────────────────
-// Build-time choropleth. The only platform that exposes a per-country play
-// breakdown is SoundCloud, so the map is SC-only (labelled as such). Geometry
-// is pre-projected to static SVG paths in data/world-geo.json (see
-// dev/gen_world_geo.mjs); we just join each shape's ISO alpha-2 `code` to the
-// dataset and compute an orange fill at build time — no client JS, CSP-safe.
+// ── Listener map (SoundCloud + Apple Music) ────────────────────────────────
+// Build-time choropleth. SoundCloud and Apple Music are the only platforms that
+// expose a per-country breakdown; their plays are summed per country in
+// @/lib/geo. Geometry is pre-projected to static SVG paths in data/world-geo.json
+// (see dev/gen_world_geo.mjs); we join each shape's ISO alpha-2 `code` to the
+// merged data and compute an orange fill at build time — no client JS, CSP-safe.
 const fmt = (n: number) => n.toLocaleString("en-IE");
-const scCountries = (scLocations as any).countries as { name: string; code: string; plays: number; approx?: boolean }[];
 const mapShapes = (worldGeo as any).countries as { code: string | null; name: string; d: string }[];
-const infoByCode = new Map(scCountries.map((c) => [c.code, c]));
-// Ireland (12,400) so dominates that a linear ramp would wash everyone else to
-// nothing — map LOG(plays) to the SoundCloud orange's opacity so small markets
-// stay visible (as they are on SoundCloud's own map).
-const logMin = Math.log(Math.min(...scCountries.map((c) => c.plays)));
-const logMax = Math.log(Math.max(...scCountries.map((c) => c.plays)));
+const infoByCode = new Map(geoCountries.map((c) => [c.code, c]));
+// Ireland (~14,846 combined) so dominates that a linear ramp would wash everyone
+// else to nothing — map LOG(plays) to the orange's opacity so small markets
+// (incl. the single-play African / South American countries) stay visible.
+const logMin = Math.log(Math.min(...geoCountries.map((c) => c.plays)));
+const logMax = Math.log(Math.max(...geoCountries.map((c) => c.plays)));
 function mapFill(code: string | null): string {
   const info = code ? infoByCode.get(code) : undefined;
   if (!info) return "var(--map-empty)";
   const t = (Math.log(info.plays) - logMin) / (logMax - logMin); // 0..1
   return `rgba(255,85,0,${(0.18 + t * 0.82).toFixed(3)})`; // --accent-sc, dim → vivid
 }
-const scLocPlays = (scLocations as any).summary?.plays ?? 0;
-const mapAria = `World map of Poolpat's SoundCloud listeners, ${scCountries.length} countries shaded by all-time play count. Highest: ${scCountries.slice(0, 5).map((c) => `${c.name} ${fmt(c.plays)}`).join(", ")}.`;
+const mapAria = `World map of where Poolpat is heard on SoundCloud and Apple Music, ${countryCount} countries shaded by combined all-time play count. Highest: ${geoCountries.slice(0, 5).map((c) => `${c.name} ${fmt(c.plays)}`).join(", ")}.`;
 
 const listenAmHref = link({
   storefront: "ie",
@@ -147,9 +145,9 @@ const artistJsonLd = {
       <StatCard label="Apple Music" value={amTotal} color="var(--accent-am)" />
     </div>
 
-    <!-- Listener map (SoundCloud Top Locations) — build-time choropleth -->
+    <!-- Listener map (SoundCloud + Apple Music) — build-time choropleth -->
     <figure class="listener-map">
-      <figcaption class="map-title">Where Poolpat is heard <span class="muted">&middot; SoundCloud &middot; all-time</span></figcaption>
+      <figcaption class="map-title">Where Poolpat is heard <span class="muted">&middot; SoundCloud + Apple Music &middot; all-time</span></figcaption>
       <svg viewBox={(worldGeo as any).viewBox} role="img" aria-label={mapAria} preserveAspectRatio="xMidYMid meet">
         {mapShapes.map((s) => {
           const info = s.code ? infoByCode.get(s.code) : undefined;
@@ -166,7 +164,7 @@ const artistJsonLd = {
           <span class="map-legend-bar"></span>
           <span class="map-legend-label">More</span>
         </span>
-        <span class="muted">{fmt(scLocPlays)} all-time SoundCloud plays &middot; top {scCountries.length} countries &middot; hover for counts</span>
+        <span class="muted">{countryCount} countries &middot; {fmt(combinedTotalPlays)} all-time plays &middot; hover for counts</span>
       </div>
     </figure>
 

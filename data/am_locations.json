@@ -1,0 +1,749 @@
+{
+  "source": "Apple Music for Artists — Places (Lifetime), pulled 2026-05-30 via the AM4A dashboard",
+  "period": "Lifetime",
+  "summary": {
+    "total_plays": 4104,
+    "geo_attributed_plays": 2945
+  },
+  "countries": [
+    {
+      "name": "Ireland",
+      "code": "IE",
+      "plays": 2446
+    },
+    {
+      "name": "United Kingdom",
+      "code": "GB",
+      "plays": 208
+    },
+    {
+      "name": "United States",
+      "code": "US",
+      "plays": 137
+    },
+    {
+      "name": "France",
+      "code": "FR",
+      "plays": 26
+    },
+    {
+      "name": "Canada",
+      "code": "CA",
+      "plays": 18
+    },
+    {
+      "name": "Australia",
+      "code": "AU",
+      "plays": 15
+    },
+    {
+      "name": "Japan",
+      "code": "JP",
+      "plays": 11
+    },
+    {
+      "name": "Belgium",
+      "code": "BE",
+      "plays": 9
+    },
+    {
+      "name": "New Zealand",
+      "code": "NZ",
+      "plays": 8
+    },
+    {
+      "name": "Spain",
+      "code": "ES",
+      "plays": 8
+    },
+    {
+      "name": "Germany",
+      "code": "DE",
+      "plays": 7
+    },
+    {
+      "name": "Mexico",
+      "code": "MX",
+      "plays": 6
+    },
+    {
+      "name": "India",
+      "code": "IN",
+      "plays": 5
+    },
+    {
+      "name": "Netherlands",
+      "code": "NL",
+      "plays": 5
+    },
+    {
+      "name": "Singapore",
+      "code": "SG",
+      "plays": 4
+    },
+    {
+      "name": "Korea, Republic of",
+      "code": "KR",
+      "plays": 3
+    },
+    {
+      "name": "Vietnam",
+      "code": "VN",
+      "plays": 3
+    },
+    {
+      "name": "Algeria",
+      "code": "DZ",
+      "plays": 2
+    },
+    {
+      "name": "Italy",
+      "code": "IT",
+      "plays": 2
+    },
+    {
+      "name": "Lithuania",
+      "code": "LT",
+      "plays": 2
+    },
+    {
+      "name": "Mauritania",
+      "code": "MR",
+      "plays": 2
+    },
+    {
+      "name": "Namibia",
+      "code": "NA",
+      "plays": 2
+    },
+    {
+      "name": "Switzerland",
+      "code": "CH",
+      "plays": 2
+    },
+    {
+      "name": "Chile",
+      "code": "CL",
+      "plays": 1
+    },
+    {
+      "name": "Czech Republic",
+      "code": "CZ",
+      "plays": 1
+    },
+    {
+      "name": "Hungary",
+      "code": "HU",
+      "plays": 1
+    },
+    {
+      "name": "Israel",
+      "code": "IL",
+      "plays": 1
+    },
+    {
+      "name": "Kuwait",
+      "code": "KW",
+      "plays": 1
+    },
+    {
+      "name": "Moldova, Republic Of",
+      "code": "MD",
+      "plays": 1
+    },
+    {
+      "name": "Morocco",
+      "code": "MA",
+      "plays": 1
+    },
+    {
+      "name": "Nigeria",
+      "code": "NG",
+      "plays": 1
+    },
+    {
+      "name": "Norway",
+      "code": "NO",
+      "plays": 1
+    },
+    {
+      "name": "Philippines",
+      "code": "PH",
+      "plays": 1
+    },
+    {
+      "name": "Russia",
+      "code": "RU",
+      "plays": 1
+    },
+    {
+      "name": "Thailand",
+      "code": "TH",
+      "plays": 1
+    },
+    {
+      "name": "United Arab Emirates",
+      "code": "AE",
+      "plays": 1
+    },
+    {
+      "name": "Venezuela",
+      "code": "VE",
+      "plays": 1
+    }
+  ],
+  "cities": [
+    {
+      "name": "Dublin",
+      "plays": 2037
+    },
+    {
+      "name": "Cork",
+      "plays": 409
+    },
+    {
+      "name": "London",
+      "plays": 196
+    },
+    {
+      "name": "Paris",
+      "plays": 19
+    },
+    {
+      "name": "San Jose",
+      "plays": 12
+    },
+    {
+      "name": "Liège",
+      "plays": 9
+    },
+    {
+      "name": "New York City",
+      "plays": 9
+    },
+    {
+      "name": "Tokyo",
+      "plays": 9
+    },
+    {
+      "name": "Auckland",
+      "plays": 7
+    },
+    {
+      "name": "Madrid",
+      "plays": 6
+    },
+    {
+      "name": "Sacramento",
+      "plays": 6
+    },
+    {
+      "name": "Seattle",
+      "plays": 6
+    },
+    {
+      "name": "Amsterdam",
+      "plays": 5
+    },
+    {
+      "name": "Dallas",
+      "plays": 5
+    },
+    {
+      "name": "Denver",
+      "plays": 5
+    },
+    {
+      "name": "Sydney",
+      "plays": 5
+    },
+    {
+      "name": "Atlanta",
+      "plays": 4
+    },
+    {
+      "name": "Calgary",
+      "plays": 4
+    },
+    {
+      "name": "Detroit",
+      "plays": 4
+    },
+    {
+      "name": "Los Angeles",
+      "plays": 4
+    },
+    {
+      "name": "Miami",
+      "plays": 4
+    },
+    {
+      "name": "Perth",
+      "plays": 4
+    },
+    {
+      "name": "Singapore",
+      "plays": 4
+    },
+    {
+      "name": "Toronto",
+      "plays": 4
+    },
+    {
+      "name": "Chicago",
+      "plays": 3
+    },
+    {
+      "name": "Kansas City",
+      "plays": 3
+    },
+    {
+      "name": "Marseille",
+      "plays": 3
+    },
+    {
+      "name": "Melbourne",
+      "plays": 3
+    },
+    {
+      "name": "Mobile",
+      "plays": 3
+    },
+    {
+      "name": "San Juan",
+      "plays": 3
+    },
+    {
+      "name": "Vancouver",
+      "plays": 3
+    },
+    {
+      "name": "Algiers",
+      "plays": 2
+    },
+    {
+      "name": "Birmingham",
+      "plays": 2
+    },
+    {
+      "name": "Boston",
+      "plays": 2
+    },
+    {
+      "name": "Bristol",
+      "plays": 2
+    },
+    {
+      "name": "Cloppenburg",
+      "plays": 2
+    },
+    {
+      "name": "Columbus",
+      "plays": 2
+    },
+    {
+      "name": "Elgin",
+      "plays": 2
+    },
+    {
+      "name": "Frankfurt Am Main",
+      "plays": 2
+    },
+    {
+      "name": "Hammond",
+      "plays": 2
+    },
+    {
+      "name": "Ho Chi Minh City",
+      "plays": 2
+    },
+    {
+      "name": "Indianapolis",
+      "plays": 2
+    },
+    {
+      "name": "Lausanne",
+      "plays": 2
+    },
+    {
+      "name": "Ludhiāna",
+      "plays": 2
+    },
+    {
+      "name": "Manchester",
+      "plays": 2
+    },
+    {
+      "name": "Mesa",
+      "plays": 2
+    },
+    {
+      "name": "Milan",
+      "plays": 2
+    },
+    {
+      "name": "New Delhi",
+      "plays": 2
+    },
+    {
+      "name": "North Platte",
+      "plays": 2
+    },
+    {
+      "name": "Nouakchott",
+      "plays": 2
+    },
+    {
+      "name": "Orlando",
+      "plays": 2
+    },
+    {
+      "name": "Philadelphia",
+      "plays": 2
+    },
+    {
+      "name": "Phoenix",
+      "plays": 2
+    },
+    {
+      "name": "San Antonio",
+      "plays": 2
+    },
+    {
+      "name": "Seoul",
+      "plays": 2
+    },
+    {
+      "name": "Vilnius",
+      "plays": 2
+    },
+    {
+      "name": "Wilmington",
+      "plays": 2
+    },
+    {
+      "name": "Windhoek",
+      "plays": 2
+    },
+    {
+      "name": "Adelaide",
+      "plays": 1
+    },
+    {
+      "name": "Airdrie",
+      "plays": 1
+    },
+    {
+      "name": "Akron",
+      "plays": 1
+    },
+    {
+      "name": "Allentown",
+      "plays": 1
+    },
+    {
+      "name": "Anaheim",
+      "plays": 1
+    },
+    {
+      "name": "Baltimore",
+      "plays": 1
+    },
+    {
+      "name": "Bangkok",
+      "plays": 1
+    },
+    {
+      "name": "Barcelona",
+      "plays": 1
+    },
+    {
+      "name": "Belfast",
+      "plays": 1
+    },
+    {
+      "name": "Berlin",
+      "plays": 1
+    },
+    {
+      "name": "Brighton",
+      "plays": 1
+    },
+    {
+      "name": "Brisbane",
+      "plays": 1
+    },
+    {
+      "name": "Budapest",
+      "plays": 1
+    },
+    {
+      "name": "Burlington",
+      "plays": 1
+    },
+    {
+      "name": "Canberra",
+      "plays": 1
+    },
+    {
+      "name": "Caracas",
+      "plays": 1
+    },
+    {
+      "name": "Cheongju-si",
+      "plays": 1
+    },
+    {
+      "name": "Chisinau",
+      "plays": 1
+    },
+    {
+      "name": "Dijon",
+      "plays": 1
+    },
+    {
+      "name": "Dubai",
+      "plays": 1
+    },
+    {
+      "name": "Ecatepec",
+      "plays": 1
+    },
+    {
+      "name": "Edinburgh",
+      "plays": 1
+    },
+    {
+      "name": "Edmonton",
+      "plays": 1
+    },
+    {
+      "name": "Fayetteville",
+      "plays": 1
+    },
+    {
+      "name": "Fort Lauderdale",
+      "plays": 1
+    },
+    {
+      "name": "Fort Smith",
+      "plays": 1
+    },
+    {
+      "name": "Fremont",
+      "plays": 1
+    },
+    {
+      "name": "Gloucester",
+      "plays": 1
+    },
+    {
+      "name": "Greenville",
+      "plays": 1
+    },
+    {
+      "name": "Halifax",
+      "plays": 1
+    },
+    {
+      "name": "Hamburg",
+      "plays": 1
+    },
+    {
+      "name": "Hamilton",
+      "plays": 1
+    },
+    {
+      "name": "Hanoi",
+      "plays": 1
+    },
+    {
+      "name": "Hays",
+      "plays": 1
+    },
+    {
+      "name": "Houston",
+      "plays": 1
+    },
+    {
+      "name": "Hyderabad",
+      "plays": 1
+    },
+    {
+      "name": "Jacksonville",
+      "plays": 1
+    },
+    {
+      "name": "Kincardine",
+      "plays": 1
+    },
+    {
+      "name": "Kuwait City",
+      "plays": 1
+    },
+    {
+      "name": "La Cruz",
+      "plays": 1
+    },
+    {
+      "name": "Lagos",
+      "plays": 1
+    },
+    {
+      "name": "Las Vegas",
+      "plays": 1
+    },
+    {
+      "name": "Leeds",
+      "plays": 1
+    },
+    {
+      "name": "León De Los Aldama",
+      "plays": 1
+    },
+    {
+      "name": "Lincoln",
+      "plays": 1
+    },
+    {
+      "name": "Marrakesh",
+      "plays": 1
+    },
+    {
+      "name": "Milwaukee",
+      "plays": 1
+    },
+    {
+      "name": "Moncton",
+      "plays": 1
+    },
+    {
+      "name": "Monterrey",
+      "plays": 1
+    },
+    {
+      "name": "Montréal",
+      "plays": 1
+    },
+    {
+      "name": "Moscow",
+      "plays": 1
+    },
+    {
+      "name": "Nürnberg",
+      "plays": 1
+    },
+    {
+      "name": "Okayama",
+      "plays": 1
+    },
+    {
+      "name": "Omaha",
+      "plays": 1
+    },
+    {
+      "name": "Osaka",
+      "plays": 1
+    },
+    {
+      "name": "Oslo",
+      "plays": 1
+    },
+    {
+      "name": "Pittsburgh",
+      "plays": 1
+    },
+    {
+      "name": "Portland",
+      "plays": 1
+    },
+    {
+      "name": "Prague",
+      "plays": 1
+    },
+    {
+      "name": "Quezon City",
+      "plays": 1
+    },
+    {
+      "name": "Raleigh",
+      "plays": 1
+    },
+    {
+      "name": "Riverside",
+      "plays": 1
+    },
+    {
+      "name": "Rochester",
+      "plays": 1
+    },
+    {
+      "name": "Santiago",
+      "plays": 1
+    },
+    {
+      "name": "Santiago De Querétaro",
+      "plays": 1
+    },
+    {
+      "name": "Sarasota",
+      "plays": 1
+    },
+    {
+      "name": "South Bend",
+      "plays": 1
+    },
+    {
+      "name": "Springfield",
+      "plays": 1
+    },
+    {
+      "name": "St. Louis",
+      "plays": 1
+    },
+    {
+      "name": "Surrey",
+      "plays": 1
+    },
+    {
+      "name": "Swindon",
+      "plays": 1
+    },
+    {
+      "name": "Tacoma",
+      "plays": 1
+    },
+    {
+      "name": "Tel Aviv",
+      "plays": 1
+    },
+    {
+      "name": "Tijuana",
+      "plays": 1
+    },
+    {
+      "name": "Toulon",
+      "plays": 1
+    },
+    {
+      "name": "Toulouse",
+      "plays": 1
+    },
+    {
+      "name": "Tours",
+      "plays": 1
+    },
+    {
+      "name": "Tucson",
+      "plays": 1
+    },
+    {
+      "name": "Valencia",
+      "plays": 1
+    },
+    {
+      "name": "Winona",
+      "plays": 1
+    }
+  ]
+}
