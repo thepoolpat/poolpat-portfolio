@@ -14,14 +14,14 @@ interface Props {
 const {
   title,
   description = "Poolpat — Cork trip-hop artist. Live play stats, discography, and liner notes across SoundCloud, Spotify, and Apple Music.",
-  ogImage,
+  ogImage = `${import.meta.env.BASE_URL}artwork/artist-banner.png`,
   ogType = "website",
   canonicalPath,
   structuredData,
 } = Astro.props;
 
 const siteUrl = import.meta.env.SITE ?? "https://thepoolpat.github.io";
-const canonical = canonicalPath ? `${siteUrl}${import.meta.env.BASE_URL}${canonicalPath}` : undefined;
+const canonical = `${siteUrl}${import.meta.env.BASE_URL}${(canonicalPath ?? "").replace(/^\//, "")}`;
 const developerToken = import.meta.env.MUSICKIT_DEVELOPER_TOKEN ?? "";
 
 const footerAmHref = link({
