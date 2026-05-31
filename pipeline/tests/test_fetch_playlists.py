@@ -9,13 +9,10 @@ Covers the four public functions individually:
 """
 
 import os
-import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
 import requests
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import fetch_playlists
 

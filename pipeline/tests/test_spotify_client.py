@@ -1,11 +1,7 @@
 """Tests for spotify_client module."""
 
-import sys
-import os
 import unittest
 from unittest.mock import patch, MagicMock
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from spotify_client import SpotifyClient
 
@@ -287,6 +283,62 @@ class TestSpotifyClientRefresh(unittest.TestCase):
             self.assertEqual(fake_auth.refresh_access_token.call_count, 1)
         finally:
             del _sys.modules["spotify_auth"]
+
+
+class TestSpotifyClientServerError(unittest.TestCase):
+    """Spotify occasionally 500s under load. The client must treat a 5xx as a
+    transient fault: retry with bounded backoff and succeed if a later attempt
+    returns 200; only raise once retries are exhausted — and on exhaustion it
+    must raise SpotifyServerError, never silently return the error body."""
+
+    @staticmethod
+    def _server_error():
+        err = MagicMock()
+        err.status_code = 500
+        err.json.return_value = {"error": {"status": 500, "message": "Server error"}}
+        err.reason = "Internal Server Error"
+        err.headers = {}
+        return err
+
+    @patch("spotify_client.time.sleep")
+    @patch("spotify_client.requests.Session")
+    def test_retry_on_500_then_succeeds(self, mock_session_cls, mock_sleep):
+        """500 → backoff → retry → 200 returns the success body."""
+        session = MagicMock()
+        mock_session_cls.return_value = session
+
+        success = _mock_json_response(200, {"display_name": "Poolpat"})
+        session.request.side_effect = [self._server_error(), success]
+
+        client = SpotifyClient("test_token")
+        result = client.get_current_user()
+
+        # The retry's 200 body is what comes back — not the 500 error body.
+        self.assertEqual(result["display_name"], "Poolpat")
+        self.assertNotIn("error", result)
+        # A second attempt actually happened.
+        self.assertEqual(session.request.call_count, 2)
+        # Backoff occurred between attempts (bounded; we don't pin the value).
+        self.assertTrue(mock_sleep.called)
+
+    @patch("spotify_client.time.sleep")
+    @patch("spotify_client.requests.Session")
+    def test_500_retry_exhaustion_raises(self, mock_session_cls, mock_sleep):
+        """All attempts 500 → raise SpotifyServerError; do NOT return the body."""
+        from spotify_errors import SpotifyServerError
+
+        session = MagicMock()
+        mock_session_cls.return_value = session
+        session.request.return_value = self._server_error()
+
+        client = SpotifyClient("test_token")
+        with self.assertRaises(SpotifyServerError) as ctx:
+            client.get_current_user()
+
+        # The error carries the 500 status, not a 2xx body leaked back to the caller.
+        self.assertEqual(ctx.exception.status_code, 500)
+        # It genuinely retried before giving up (more than the single first try).
+        self.assertGreater(session.request.call_count, 1)
 
 
 if __name__ == "__main__":

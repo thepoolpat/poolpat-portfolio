@@ -11,6 +11,7 @@ import requests
 from spotify_errors import (
     SpotifyAuthError,
     SpotifyRateLimitError,
+    SpotifyServerError,
     raise_for_status,
 )
 
@@ -75,8 +76,17 @@ class SpotifyClient:
                     time.sleep(wait)
                     continue
                 raise
+            except SpotifyServerError as e:
+                if attempt < MAX_RETRIES:
+                    wait = min(2 ** attempt, 30)
+                    print(f"Server error {e.status_code}, waiting {wait}s...", file=sys.stderr)
+                    time.sleep(wait)
+                    continue
+                raise
 
-        return resp.json()
+        # Retry loop exhausted without a successful return — never return the
+        # last (error) body as if it were a successful response.
+        raise RuntimeError(f"Request to {url} failed after {MAX_RETRIES + 1} attempts")
 
     def _paginate(self, endpoint: str, params: dict | None = None, limit: int = 50) -> list[dict]:
         results: list[dict] = []

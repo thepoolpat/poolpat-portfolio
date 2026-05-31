@@ -46,6 +46,5 @@ if resp.status_code == 200:
     
     print("⬆️  Updated .env.spotify with new access token")
 else:
-    print(f"❌ Refresh failed: {resp.status_code}")
-    print(resp.text)
+    print(f"❌ Refresh failed: HTTP {resp.status_code}")
     sys.exit(1)

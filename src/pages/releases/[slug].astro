@@ -1,7 +1,7 @@
 ---
 import Base from "@/layouts/Base.astro";
 import ListenButton from "@/components/ListenButton.astro";
-import ChartBadge from "@/components/ChartBadge.astro";
+import ReleaseMeta from "@/components/ReleaseMeta.astro";
 import { getCollection } from "astro:content";
 import { hashCampaign } from "@affiliate";
 
@@ -68,19 +68,7 @@ const albumJsonLd = {
   <h1>{r.title}</h1>
   <p class="tagline">{r.tagline}</p>
 
-  <div class="meta">
-    <span class="badge-type">{r.typeLabel}</span>
-    {r.meta?.map((m) => <span>{m}</span>)}
-    {r.charts?.map((c) => <ChartBadge position={c} />)}
-  </div>
-
-  <ListenButton
-    storefront={r.storefront}
-    type={r.type as "album"}
-    slug={r.slug}
-    id={r.id}
-    campaign={hashCampaign(`web-portfolio-${r.slug}-hero`)}
-  />
+  <ReleaseMeta release={r} />
 
   {r.sections?.map((s) => (
     <section class="section" id={s.id}>

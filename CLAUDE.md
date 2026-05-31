@@ -19,9 +19,9 @@ auto-committed by the weekly `fetch-data.yml` workflow.
   - `spotify_client.py` — typed API client with retry + auto-refresh
   - `spotify_auth.py` — PKCE OAuth flow + refresh-token rotation handling
   - `spotify_errors.py` — typed exception hierarchy
-  - `tests/` — pytest suite (105 tests across 5 modules)
+  - `tests/` — pytest suite (118 tests across 7 modules)
 - `packages/affiliate-helper/js/` — Apple Music affiliate link builder
-  - `tests/` — Vitest suite (25 tests)
+  - `tests/` — Vitest suite (52 tests)
 - `.github/workflows/` — `deploy.yml` (Pages), `fetch-data.yml` (weekly cron),
   `codeql.yml`, `tests.yml` (pytest + vitest on push/PR).
 
@@ -47,7 +47,7 @@ zero values, partial responses, and new tracks in the fetched set.
 
 ## Test status
 
-105 Python + 25 JS passing. Coverage now includes:
+118 Python + 52 JS passing. Coverage now includes:
 - `fetch_plays` — monotonic helpers + SoundCloud / Spotify / Apple Music
   fetch orchestration, history.csv writer, GitHub alert path, RSS parsing
 - `fetch_playlists` — client_credentials auth, retry, dedup, search nullability

@@ -6,11 +6,7 @@ this invariant slips, history is wrong forever — these tests are the only
 safety net.
 """
 
-import os
-import sys
 import unittest
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from fetch_plays import monotonic_merge_tracks, monotonic_total
 
