@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
   workflow_dispatch: {}
+  workflow_run:
+    workflows: ["Fetch Data (weekly)"]
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
@@ -17,8 +21,14 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Always build main's current tip. For workflow_run deploys this
+          # guarantees we pick up the data commit the fetch just pushed
+          # (ref-less checkout can resolve to the pre-commit head_sha).
+          ref: main
 
       - uses: actions/setup-node@v4
         with:
