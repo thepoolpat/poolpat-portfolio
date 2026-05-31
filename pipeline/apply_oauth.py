@@ -6,7 +6,7 @@ from pathlib import Path
 import json
 import requests
 
-code = 'AQD6c6_ZCV37si2929weVw9KWo-AiqoJnrbwo5HSoeH4GXXoR2oCGqux1Xg9YduSdGYEUz-8YM81NhSMRptiEHKT59P50-vPke9kClbfqLxpog5wryFr8PP9LuMMqqWxJ8RccVF7YdI5uibURAtvRDb0E0Tt0Bj9HPZ_opmECkOSsS4uWEUgAsJQSaP2EZK5oAK3_orAg5MJWoK_d0DkUSKO_drQZXcCjDjAh5G19inM_r8NFSe1cL9O8N059xNtYRGxtT5LLIGkosjnKwZ3V8tmRiczSrh0Xf3gbbCdd1SJfgB2MBLC5BrHH6SWwn7SSMV2C6MpHqmUuvFhVcaH32RjRRkjrE-IyxnPOyYW971MHSZkDkq7erQe-RvXitiMpS04vob7o6ybSMOv0a3grpNSEh5u0sw0wHoPZFKcFtHx_cxsOPuMqrnYQd5Dr4-1BK2x8sQthZY5OK1xGxnBJ_8IzacpWHT1OazANEm9QSmuihyirbQfe1i976Nivg5OoPnh3DykWXW9l_JWMKSHkM6ZkHGxeYGT9ZvClNTimMFxOcaiNGvnRn3oNNDy4Lon'
+code = 'YOUR_AUTH_CODE'
 
 cache_dir = Path.home() / '.cache' / 'spotify_oauth'
 cache_dir.mkdir(parents=True, exist_ok=True)
@@ -21,7 +21,7 @@ sp_oauth = SpotifyOAuth(
 
 try:
     token_info = sp_oauth.validate_token()
-    print('Token already valid:', token_info.get('access_token', 'N/A')[:50])
+    print('Token already valid')
 except Exception as e:
     print(f'Need new token: {e}')
     
@@ -57,6 +57,5 @@ except Exception as e:
                     f.write(line)
         
         print('Tokens saved!')
-        print(f"Access: {token_data['access_token'][:50]}...")
     else:
-        print(f'Failed: {token_resp.text}')
+        print(f'Failed: HTTP {token_resp.status_code}')

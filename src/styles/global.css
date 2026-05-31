@@ -144,7 +144,7 @@ footer { color: var(--muted); font-size: .85rem; text-align: center; padding: 3r
 
 .artist-header { border-radius: var(--radius); overflow: hidden; margin-bottom: 1.5rem; }
 .artist-header a { display: block; }
-.artist-banner { width: 100%; display: block; transition: opacity .2s ease; }
+.artist-banner { width: 100%; display: block; aspect-ratio: 1300/740; transition: opacity .2s ease; }
 .artist-header a:hover .artist-banner { opacity: .9; }
 
 .social-bar { display: flex; align-items: center; justify-content: center; gap: .8rem; margin: 1rem 0 .5rem; flex-wrap: wrap; }

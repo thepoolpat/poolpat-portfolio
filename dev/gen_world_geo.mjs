@@ -31,6 +31,7 @@ const topo = require("world-atlas/countries-110m.json");
 // POOLPAT_REPO points back at the repo; otherwise fall back to the repo layout.
 const repoRoot = process.env.POOLPAT_REPO || fileURLToPath(new URL("..", import.meta.url));
 const scLocations = JSON.parse(readFileSync(`${repoRoot}/data/sc_locations.json`, "utf8"));
+const amLocations = JSON.parse(readFileSync(`${repoRoot}/data/am_locations.json`, "utf8"));
 
 // ── numeric ISO id -> alpha-2, with fallbacks for Natural Earth quirks ──────
 const numericToA2 = countries.getNumericCodes(); // { "372": "IE", ... }
@@ -79,16 +80,22 @@ for (const f of fc.features) {
 // ── verification: every dataset country MUST resolve to a geometry ──────────
 const geoCodes = new Set(out.map((c) => c.code).filter(Boolean));
 const missing = scLocations.countries.filter((c) => !geoCodes.has(c.code));
+const missingAm = amLocations.countries.filter((c) => !geoCodes.has(c.code));
 const uncoded = out.filter((c) => !c.code).map((c) => c.name);
 
 process.stderr.write(`features rendered: ${out.length}\n`);
 process.stderr.write(`features with an ISO code: ${out.filter((c) => c.code).length}\n`);
 process.stderr.write(`uncoded (rendered grey, no join): ${uncoded.length}${uncoded.length ? " — " + uncoded.join(", ") : ""}\n`);
-process.stderr.write(`dataset countries: ${scLocations.countries.length}\n`);
+process.stderr.write(`dataset countries: SoundCloud ${scLocations.countries.length}, Apple Music ${amLocations.countries.length}\n`);
 if (missing.length) {
-  process.stderr.write(`!! MISSING GEOMETRY for ${missing.length} dataset countries: ${missing.map((m) => `${m.name}(${m.code})`).join(", ")}\n`);
+  process.stderr.write(`!! MISSING GEOMETRY for ${missing.length} SoundCloud dataset countries: ${missing.map((m) => `${m.name}(${m.code})`).join(", ")}\n`);
+}
+if (missingAm.length) {
+  process.stderr.write(`!! MISSING GEOMETRY for ${missingAm.length} Apple Music dataset countries: ${missingAm.map((m) => `${m.name}(${m.code})`).join(", ")}\n`);
+}
+if (missing.length || missingAm.length) {
   process.exit(1);
 }
-process.stderr.write(`OK — all ${scLocations.countries.length} dataset countries matched a shape.\n`);
+process.stderr.write(`OK — all ${scLocations.countries.length} SoundCloud and ${amLocations.countries.length} Apple Music dataset countries matched a shape.\n`);
 
 process.stdout.write(JSON.stringify({ viewBox: `0 0 ${W} ${H}`, countries: out }));

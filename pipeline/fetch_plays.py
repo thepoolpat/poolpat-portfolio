@@ -225,9 +225,6 @@ def fetch_soundcloud_all(existing_sc: dict) -> tuple[dict, list[dict], bool]:
             "last_successful_fetch": datetime.now(timezone.utc).isoformat(),
         }
         # Preserve manually-entered Insights metrics (not available via API).
-        # NB: total_plays_all_platforms is intentionally NOT preserved here — it is
-        # recomputed in main() as the sum of the three platform totals so it can
-        # never go stale relative to soundcloud.total_plays.
         for key in ("total_listeners",
                     "total_streams_sc", "total_downloads", "source"):
             if key in existing_sc:
@@ -532,7 +529,7 @@ def save_failure_tracker(tracker: dict) -> None:
 
 
 def create_alert_issue(platform: str, consecutive: int) -> None:
-    token = os.environ.get("GITHUB_TOKEN")
+    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
     repo = os.environ.get("GITHUB_REPOSITORY")
     if not token or not repo:
         print(f"  ALERT: {platform} failed {consecutive}x (no GH token)")
@@ -686,12 +683,9 @@ def main():
         "apple_music": am_data,
     }
 
-    # Grand total = sum of the three platform totals (single source of truth).
-    # Recomputed every run and stored so the site never reads a stale value.
     sc_t = sc_data.get("total_plays", 0) or 0
     sp_t = sp_data.get("total_streams", 0) or 0
     am_t = am_data.get("total_plays", 0) or 0
-    sc_data["total_plays_all_platforms"] = sc_t + sp_t + am_t
 
     save_plays_json(data)
     append_history_csv(data)

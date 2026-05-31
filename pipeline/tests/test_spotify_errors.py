@@ -1,11 +1,7 @@
 """Tests for spotify_errors module."""
 
-import sys
-import os
 import unittest
 from unittest.mock import MagicMock
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from spotify_errors import (
     SpotifyAuthError,

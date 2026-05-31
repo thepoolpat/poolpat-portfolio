@@ -17,7 +17,7 @@ export default defineConfig({
   base,
   output: "static",
   integrations: [sitemap()],
-  build: { inlineStylesheets: "auto" },
+  build: { inlineStylesheets: "always" },
   vite: {
     resolve: {
       alias: {

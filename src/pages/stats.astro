@@ -1,4 +1,5 @@
 ---
+import fs from "node:fs";
 import Base from "@/layouts/Base.astro";
 import StatCard from "@/components/StatCard.astro";
 import playsRaw from "@data/plays.json";
@@ -38,10 +39,30 @@ const scSorted = sortedTracks(scTracks);
 const spSorted = sortedTracks(spTracks);
 const amSorted = sortedTracks(amTracks);
 
+// The three Top-Tracks sections are structurally identical (top-5, same markup),
+// differing only by platform label, source array, and accent colour — drive them
+// from one config so the markup lives in a single place.
+const topTrackSections: { platform: string; tracks: [string, number][]; color: string }[] = [
+  { platform: "SoundCloud", tracks: scSorted, color: "var(--accent-sc)" },
+  { platform: "Spotify", tracks: spSorted, color: "var(--accent-sp)" },
+  { platform: "Apple Music", tracks: amSorted, color: "var(--accent-am)" },
+];
+
 // ── Top Locations (flag display) — SoundCloud + Apple Music, summed in @/lib/geo ─
 const base = import.meta.env.BASE_URL;
 const fmtN = (n: number) => n.toLocaleString("en-IE");
 const flagSrc = (code: string) => `${base}flags/${code.toLowerCase()}.svg`;
+// Several Apple-Music-only countries in the merged geo (e.g. SG, DZ, MR, NA, CL,
+// MA, NG, PH, TH, VE) have no SVG in public/flags/. Build a build-time set of the
+// codes we actually ship so the country list can fall back to a blank placeholder
+// instead of emitting a broken <img> (mirrors the city list's `c.country` guard).
+// `astro build` runs from the repo root, so resolve public/flags/ cwd-relative.
+const flagCodes = new Set(
+  fs.readdirSync("public/flags")
+    .filter((f) => f.endsWith(".svg"))
+    .map((f) => f.slice(0, -4))
+);
+const hasFlag = (code: string) => flagCodes.has(code.toLowerCase());
 const playCount = (p: number, approx?: boolean) => `${approx ? "~" : ""}${fmtN(p)}`;
 // per-platform breakdown for the row's hover tooltip
 const breakdown = (sc: number, am: number) =>
@@ -182,6 +203,35 @@ const playlistFetchedAt = playlistsData.fetched_at
         return;
       }
 
+      // Gate the 1.2s draw-in on prefers-reduced-motion (mirrors the homepage
+      // carousel's matchMedia pattern), and only build the chart once it scrolls
+      // into view so Chart.js work isn't done for an off-screen canvas. Degrades
+      // gracefully: if IntersectionObserver is missing or the canvas is already
+      // visible, build immediately. `built` guards against a double-construct.
+      const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      let built = false;
+      const build = () => {
+        if (built) return;
+        built = true;
+        buildChart();
+      };
+
+      if ("IntersectionObserver" in window) {
+        const io = new IntersectionObserver((entries, obs) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting) {
+              obs.disconnect();
+              build();
+              break;
+            }
+          }
+        }, { rootMargin: "200px" });
+        io.observe(canvas);
+      } else {
+        build();
+      }
+
+      function buildChart() {
       new Chart(canvas, {
         type: "line",
         data: {
@@ -300,9 +350,10 @@ const playlistFetchedAt = playlistsData.fetched_at
             }
           },
           elements: { line: { tension: 0, borderWidth: 2.5 }, point: { radius: 3, hitRadius: 10 } },
-          animation: { duration: 1200, easing: "easeOutQuart" }
+          animation: prefersReduced ? false : { duration: 1200, easing: "easeOutQuart" }
         }
       });
+      }
     })();
   </script>
 
@@ -331,7 +382,9 @@ const playlistFetchedAt = playlistsData.fetched_at
           {geoCountries.slice(0, 20).map((c, i) => (
             <li class="track" title={breakdown(c.sc, c.am)}>
               <span class="track-num">{i + 1}</span>
-              <img class="flag" src={flagSrc(c.code)} alt="" width="24" height="18" loading="lazy" decoding="async" />
+              {hasFlag(c.code)
+                ? <img class="flag" src={flagSrc(c.code)} alt="" width="24" height="18" loading="lazy" decoding="async" />
+                : <span class="flag" aria-hidden="true"></span>}
               <span class="track-title">{c.name}</span>
               <span class="track-duration" style="color:var(--accent-sc)">{playCount(c.plays, c.approx)}</span>
             </li>
@@ -361,44 +414,20 @@ const playlistFetchedAt = playlistsData.fetched_at
     </section>
   )}
 
-  <section class="section">
-    <h2>Top Tracks &mdash; SoundCloud</h2>
-    <ul class="tracks">
-      {scSorted.slice(0, 5).map(([title, plays], i) => (
-        <li class="track">
-          <span class="track-num">{i + 1}</span>
-          <span class="track-title">{title}</span>
-          <span class="track-duration" style={`color:var(--accent-sc)`}>{plays.toLocaleString("en-IE")}</span>
-        </li>
-      ))}
-    </ul>
-  </section>
-
-  <section class="section">
-    <h2>Top Tracks &mdash; Spotify</h2>
-    <ul class="tracks">
-      {spSorted.slice(0, 5).map(([title, plays], i) => (
-        <li class="track">
-          <span class="track-num">{i + 1}</span>
-          <span class="track-title">{title}</span>
-          <span class="track-duration" style={`color:var(--accent-sp)`}>{plays.toLocaleString("en-IE")}</span>
-        </li>
-      ))}
-    </ul>
-  </section>
-
-  <section class="section">
-    <h2>Top Tracks &mdash; Apple Music</h2>
-    <ul class="tracks">
-      {amSorted.slice(0, 5).map(([title, plays], i) => (
-        <li class="track">
-          <span class="track-num">{i + 1}</span>
-          <span class="track-title">{title}</span>
-          <span class="track-duration" style={`color:var(--accent-am)`}>{plays.toLocaleString("en-IE")}</span>
-        </li>
-      ))}
-    </ul>
-  </section>
+  {topTrackSections.map((sec) => (
+    <section class="section">
+      <h2>Top Tracks &mdash; {sec.platform}</h2>
+      <ul class="tracks">
+        {sec.tracks.slice(0, 5).map(([title, plays], i) => (
+          <li class="track">
+            <span class="track-num">{i + 1}</span>
+            <span class="track-title">{title}</span>
+            <span class="track-duration" style={`color:${sec.color}`}>{plays.toLocaleString("en-IE")}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  ))}
 
   <nav class="nav-links" style="margin-top:2rem">
     <a class="nav-link" href={`${import.meta.env.BASE_URL}`}>&larr; Home</a>

@@ -1,0 +1,28 @@
+---
+// Shared release meta badges + primary "Listen" button. Extracted from the
+// byte-equivalent block that was duplicated in src/pages/index.astro (hero
+// slide) and src/pages/releases/[slug].astro. Both call sites passed the same
+// release object and the same `web-portfolio-${slug}-hero` campaign, so the
+// block is parameterized only by the release.
+import ChartBadge from "@/components/ChartBadge.astro";
+import ListenButton from "@/components/ListenButton.astro";
+import { hashCampaign } from "@affiliate";
+
+interface Props {
+  release: any;
+}
+const { release: r } = Astro.props;
+---
+<div class="meta">
+  <span class="badge-type">{r.typeLabel}</span>
+  {r.meta?.map((m: string) => <span>{m}</span>)}
+  {r.charts?.map((c: any) => <ChartBadge position={c} />)}
+</div>
+
+<ListenButton
+  storefront={r.storefront}
+  type={r.type as "album"}
+  slug={r.slug}
+  id={r.id}
+  campaign={hashCampaign(`web-portfolio-${r.slug}-hero`)}
+/>

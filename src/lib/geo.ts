@@ -35,22 +35,23 @@ export interface GeoCity {
   approx?: boolean;
 }
 
-const sc = scRaw as any;
-const am = amRaw as any;
-
-// ── Countries: join on alpha-2 code ─────────────────────────────────────────
-const countryByCode = new Map<string, GeoCountry>();
-for (const c of sc.countries) {
-  countryByCode.set(c.code, { code: c.code, name: c.name, plays: c.plays, sc: c.plays, am: 0, approx: !!c.approx });
+// Raw per-platform datasets, as loaded from data/*.json. Kept loose (`any`)
+// because mergeGeo is the single place that reads their fields.
+export interface GeoSource {
+  summary?: { plays?: number; total_plays?: number; [k: string]: unknown };
+  countries: Array<{ name: string; code: string; plays: number; approx?: boolean }>;
+  cities: Array<{ name: string; country?: string | null; plays: number; approx?: boolean }>;
 }
-for (const c of am.countries) {
-  const e = countryByCode.get(c.code);
-  if (e) { e.plays += c.plays; e.am = c.plays; }
-  else countryByCode.set(c.code, { code: c.code, name: c.name, plays: c.plays, sc: 0, am: c.plays });
-}
-export const countries: GeoCountry[] = [...countryByCode.values()].sort((a, b) => b.plays - a.plays);
 
-// ── Cities: join on normalized name (a few spellings differ across platforms) ─
+export interface MergedGeo {
+  countries: GeoCountry[];
+  cities: GeoCity[];
+  scTotalPlays: number;
+  amTotalPlays: number;
+  combinedTotalPlays: number;
+  countryCount: number;
+}
+
 const CITY_ALIAS: Record<string, string> = {
   "new york city": "new york",
   "nürnberg": "nuremberg",
@@ -60,20 +61,59 @@ const cityKey = (n: string) => {
   const k = n.trim().toLowerCase();
   return CITY_ALIAS[k] ?? k;
 };
-const cityByKey = new Map<string, GeoCity>();
-for (const c of sc.cities) {
-  cityByKey.set(cityKey(c.name), { name: c.name, country: c.country, plays: c.plays, sc: c.plays, am: 0, approx: !!c.approx });
-}
-for (const c of am.cities) {
-  const k = cityKey(c.name);
-  const e = cityByKey.get(k);
-  if (e) { e.plays += c.plays; e.am = c.plays; }
-  else cityByKey.set(k, { name: c.name, country: null, plays: c.plays, sc: 0, am: c.plays });
-}
-export const cities: GeoCity[] = [...cityByKey.values()].sort((a, b) => b.plays - a.plays);
 
-// ── Totals ──────────────────────────────────────────────────────────────────
-export const scTotalPlays: number = sc.summary?.plays ?? 0;          // 28,544
-export const amTotalPlays: number = am.summary?.total_plays ?? 0;    // 4,104
-export const combinedTotalPlays: number = scTotalPlays + amTotalPlays;
-export const countryCount: number = countries.length;               // distinct countries with any plays
+// Pure: takes the two raw datasets and returns the merged geography. No I/O,
+// no module-level data — so it is unit-testable with inline fixtures. The
+// module-level exports below are just this applied to the real JSON.
+export function mergeGeo(sc: GeoSource, am: GeoSource): MergedGeo {
+  // ── Countries: join on alpha-2 code ───────────────────────────────────────
+  const countryByCode = new Map<string, GeoCountry>();
+  for (const c of sc.countries) {
+    countryByCode.set(c.code, { code: c.code, name: c.name, plays: c.plays, sc: c.plays, am: 0, approx: !!c.approx });
+  }
+  for (const c of am.countries) {
+    const e = countryByCode.get(c.code);
+    if (e) { e.plays += c.plays; e.am = c.plays; }
+    else countryByCode.set(c.code, { code: c.code, name: c.name, plays: c.plays, sc: 0, am: c.plays });
+  }
+  const countries = [...countryByCode.values()].sort((a, b) => b.plays - a.plays);
+
+  // ── Cities: join on normalized name (a few spellings differ across platforms) ─
+  const cityByKey = new Map<string, GeoCity>();
+  for (const c of sc.cities) {
+    cityByKey.set(cityKey(c.name), { name: c.name, country: c.country ?? null, plays: c.plays, sc: c.plays, am: 0, approx: !!c.approx });
+  }
+  for (const c of am.cities) {
+    const k = cityKey(c.name);
+    const e = cityByKey.get(k);
+    if (e) { e.plays += c.plays; e.am = c.plays; }
+    else cityByKey.set(k, { name: c.name, country: null, plays: c.plays, sc: 0, am: c.plays });
+  }
+  const cities = [...cityByKey.values()].sort((a, b) => b.plays - a.plays);
+
+  // ── Totals ────────────────────────────────────────────────────────────────
+  const scTotalPlays = sc.summary?.plays ?? 0;          // 28,544
+  const amTotalPlays = am.summary?.total_plays ?? 0;    // 4,104
+  // NOTE: combinedTotalPlays is the full all-time headline figure (SC plays +
+  // AM total_plays). It INTENTIONALLY exceeds the sum of the mapped country
+  // rows below: country rows are only the geo-attributable subset, and on the
+  // Apple Music side a large share of plays (here ~1,159 of 4,104) carry no
+  // place at all (see am.summary.geo_attributed_plays). Do NOT "fix" the gap by
+  // swapping to am.summary.geo_attributed_plays — the headline number is meant
+  // to be the true total plays, not the smaller geo-attributed subset. The map
+  // showing fewer plays than the headline is correct and expected.
+  const combinedTotalPlays = scTotalPlays + amTotalPlays;
+  const countryCount = countries.length;               // distinct countries with any plays
+
+  return { countries, cities, scTotalPlays, amTotalPlays, combinedTotalPlays, countryCount };
+}
+
+const merged = mergeGeo(scRaw as unknown as GeoSource, amRaw as unknown as GeoSource);
+
+// Consumed by src/pages/index.astro and src/pages/stats.astro — keep stable.
+export const countries: GeoCountry[] = merged.countries;
+export const cities: GeoCity[] = merged.cities;
+export const scTotalPlays: number = merged.scTotalPlays;            // 28,544
+export const amTotalPlays: number = merged.amTotalPlays;            // 4,104
+export const combinedTotalPlays: number = merged.combinedTotalPlays;
+export const countryCount: number = merged.countryCount;           // distinct countries with any plays

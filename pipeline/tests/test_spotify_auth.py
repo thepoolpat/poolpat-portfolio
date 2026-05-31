@@ -1,14 +1,11 @@
 """Tests for spotify_auth module."""
 
-import sys
 import os
 import tempfile
 import unittest
 from unittest.mock import patch, MagicMock
 
 import requests
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from spotify_auth import (
     generate_pkce_pair,

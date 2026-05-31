@@ -1,46 +1,24 @@
 """
-fetch_playlists.py — client_credentials variant (DRAFT)
+fetch_playlists.py — live playlist fetcher (client_credentials flow)
 
-Drop-in replacement for the existing fetch_playlists.py that authenticates
-to Spotify via the **client_credentials** OAuth grant instead of the
-refresh_token / PKCE flow.
+This is the active playlist fetcher invoked by the `Fetch playlist data`
+step in .github/workflows/fetch-data.yml. It authenticates to Spotify via
+the **client_credentials** OAuth grant: every run mints its own short-lived
+access_token from CLIENT_ID + CLIENT_SECRET, with no refresh_token, no
+rotation, no save-back, and no $GITHUB_ENV juggling.
 
-Why this exists
----------------
-The PKCE refresh_token flow on poolpat-portfolio's Spotify app has been
-unreliable: minted tokens get revoked between local mint and CI use,
-likely due to concurrent grants (hermes_mcp/spotify.py MCP server,
-spotipy cache, multiple OAuth re-auths in short windows). Client
-credentials flow has no refresh_token, no rotation, no save-back, no
-$GITHUB_ENV juggling — every run mints its own short-lived access_token
-from CLIENT_ID + CLIENT_SECRET.
-
-Trade-off
----------
+Scope
+-----
 Client credentials only grants access to PUBLIC catalog endpoints
-(/artists, /albums, /tracks, /search, /playlists/<public_id>). It
-CANNOT read:
-  - User's private playlists
-  - User's saved tracks / library
-  - Top tracks / recently played
-  - Anything requiring a user-scoped token
+(/artists, /albums, /tracks, /search, /playlists/<public_id>). It CANNOT
+read user-scoped data (private playlists, saved tracks, top tracks,
+recently played). That is fine for playlist discovery: we search for
+tracks by name and hit Playlistcheck (RapidAPI) — both public.
 
-For *playlist discovery* this is fine: we search for tracks by name and
-hit Playlistcheck (RapidAPI) — both of those are public.
-
-Activation
-----------
-1.  mv pipeline/fetch_playlists.py pipeline/fetch_playlists_pkce.py.bak
-2.  mv pipeline/fetch_playlists_cc.py.draft pipeline/fetch_playlists.py
-3.  In .github/workflows/fetch-data.yml, the `Fetch playlist data` step
-    can drop SPOTIFY_REFRESH_TOKEN from its env (still needed by
-    fetch_plays' user-auth attempt, so keep at job level for now).
-    GH_PAT is no longer required for this script's path.
-
-Required env (unchanged from job-level)
----------------------------------------
+Required env
+------------
   SPOTIFY_CLIENT_ID
-  SPOTIFY_CLIENT_SECRET   (was already in workflow env, just unused)
+  SPOTIFY_CLIENT_SECRET
   RAPIDAPI_KEY
 """
 

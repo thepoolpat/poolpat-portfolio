@@ -1,9 +1,8 @@
 ---
 import Base from "@/layouts/Base.astro";
-import ListenButton from "@/components/ListenButton.astro";
-import ChartBadge from "@/components/ChartBadge.astro";
 import StatCard from "@/components/StatCard.astro";
 import ReleaseCard from "@/components/ReleaseCard.astro";
+import ReleaseMeta from "@/components/ReleaseMeta.astro";
 import { getCollection } from "astro:content";
 import playsRaw from "@data/plays.json";
 import worldGeo from "@data/world-geo.json";
@@ -79,7 +78,7 @@ const artistJsonLd = {
   <!-- Artist Header -->
   <header class="artist-header">
     <a href="https://music.lnk.to/b6DLXM" target="_blank" rel="noopener noreferrer" aria-label="Poolpat — listen now on Apple Music">
-      <img class="artist-banner" src={`${base}artwork/artist-banner.png`} alt="Poolpat — Cork trip-hop artist" loading="eager" decoding="async" />
+      <img class="artist-banner" src={`${base}artwork/artist-banner.png`} alt="Poolpat — Cork trip-hop artist" fetchpriority="high" loading="eager" decoding="async" />
     </a>
   </header>
 
@@ -96,7 +95,6 @@ const artistJsonLd = {
       </a>
       <a class="social-catchall" href="https://ffm.bio/poolpat" target="_blank" rel="noopener noreferrer" aria-label="All Poolpat links on FFM">Stream &amp; Connect</a>
     </nav>
-  </header>
 
   <!-- Hero Carousel -->
   <section class="hero" role="region" aria-roledescription="carousel" aria-label="Featured releases">
@@ -108,18 +106,7 @@ const artistJsonLd = {
           </div>
           <h1>{r.title}</h1>
           <p class="tagline">{r.tagline}</p>
-          <div class="meta">
-            <span class="badge-type">{r.typeLabel}</span>
-            {r.meta?.map((m) => <span>{m}</span>)}
-            {r.charts?.map((c) => <ChartBadge position={c} />)}
-          </div>
-          <ListenButton
-            storefront={r.storefront}
-            type={r.type as "album"}
-            slug={r.slug}
-            id={r.id}
-            campaign={hashCampaign(`web-portfolio-${r.slug}-hero`)}
-          />
+          <ReleaseMeta release={r} />
         </div>
       ))}
     </div>
