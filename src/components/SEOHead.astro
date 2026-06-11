@@ -28,6 +28,8 @@ const fullOgImage = ogImage?.startsWith("http") ? ogImage : `${siteUrl}${ogImage
 
 {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
 
+{/* Escape "<" so a value containing "</script>" can't terminate the data
+    block and inject live markup — JSON.stringify leaves it verbatim. */}
 {structuredData && (
-  <script is:inline type="application/ld+json" set:html={JSON.stringify(structuredData)} />
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(structuredData).replace(/</g, "\\u003c")} />
 )}

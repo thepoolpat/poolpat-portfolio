@@ -7,10 +7,13 @@ import historyRaw from "@data/history.csv?raw";
 import yearlyRaw from "@data/play_history_yearly.json";
 import { countries as geoCountries, cities as geoCities, combinedTotalPlays, countryCount } from "@/lib/geo";
 
+// Read at runtime, not via static import: Rollup resolves import specifiers
+// during `astro build`, so a missing playlists.json would fail the build
+// before any try/catch could run. `astro build` runs from the repo root
+// (same assumption as the public/flags read below).
 let playlistsData: any = { playlists: [] };
 try {
-  const mod = await import("@data/playlists.json");
-  playlistsData = (mod as any).default ?? mod;
+  playlistsData = JSON.parse(fs.readFileSync("data/playlists.json", "utf8"));
 } catch (_) {}
 
 const data = playsRaw as any;
@@ -29,7 +32,11 @@ const grandTotal = scTotal + spTotal + amTotal;
 
 const scFollowers = data.soundcloud?.followers || 0;
 const spMonthly = data.spotify?.monthly_listeners || 0;
-const lastUpdated = data.last_updated ? new Date(data.last_updated).toLocaleDateString("en-IE", { day: "numeric", month: "short", year: "numeric" }) : "unknown";
+// Guard against a malformed timestamp, not just a missing one — an Invalid
+// Date would render literally here and feed NaN x-values to the chart below.
+const lastUpdatedDate = new Date(data.last_updated ?? NaN);
+const lastUpdatedValid = Number.isFinite(lastUpdatedDate.getTime());
+const lastUpdated = lastUpdatedValid ? lastUpdatedDate.toLocaleDateString("en-IE", { day: "numeric", month: "short", year: "numeric" }) : "unknown";
 
 function sortedTracks(tracks: Record<string, number>): [string, number][] {
   return Object.entries(tracks).filter(([, v]) => v != null).sort((a, b) => (b[1] || 0) - (a[1] || 0));
@@ -106,7 +113,7 @@ function projectSeries(arr: number[]): (number | null)[] {
 // the SoundCloud Insights "All Platforms" dashboard — as cumulative year-end
 // points. (Each platform's annual values sum to its all-time total.)
 const yearly = (yearlyRaw as any).annual_plays || {};
-const nowMs = data.last_updated ? new Date(data.last_updated).getTime() : Date.now();
+const nowMs = lastUpdatedValid ? lastUpdatedDate.getTime() : Date.now();
 const nowYear = new Date(nowMs).getUTCFullYear();
 function spinePoints(annual: Record<string, number> = {}): { x: number; y: number }[] {
   const years = Object.keys(annual).map(Number).filter((y) => Number.isFinite(y)).sort((a, b) => a - b);
@@ -153,6 +160,13 @@ const chartPoints = {
 
 const playlists: any[] = playlistsData.playlists || [];
 const totalPlaylistReach = playlists.reduce((a: number, p: any) => a + (p.followers || 0), 0);
+// spotify_url originates from arbitrary public playlists (search results) and
+// can be null — only link to canonical Spotify playlist URLs.
+const playlistHref = (p: any): string | null => {
+  if (typeof p.spotify_url === "string" && p.spotify_url.startsWith("https://open.spotify.com/")) return p.spotify_url;
+  if (p.playlist_id) return `https://open.spotify.com/playlist/${p.playlist_id}`;
+  return null;
+};
 const playlistFetchedAt = playlistsData.fetched_at
   ? new Date(playlistsData.fetched_at).toLocaleDateString("en-IE", { day: "numeric", month: "short", year: "numeric" })
   : null;
@@ -402,9 +416,9 @@ const playlistFetchedAt = playlistsData.fetched_at
         {playlists.slice(0, 20).map((p: any, i: number) => (
           <li class="track">
             <span class="track-num">{i + 1}</span>
-            <a class="track-title" href={p.spotify_url} target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:none">
-              {p.name || p.playlist_id}
-            </a>
+            {playlistHref(p)
+              ? <a class="track-title" href={playlistHref(p)} target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:none">{p.name || p.playlist_id}</a>
+              : <span class="track-title">{p.name || p.playlist_id}</span>}
             <span class="track-duration" style="color:var(--accent-sp)">
               {(p.followers || 0).toLocaleString("en-IE")} followers
             </span>
