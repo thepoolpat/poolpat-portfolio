@@ -398,8 +398,10 @@ class TestCreateAlertIssue(unittest.TestCase):
         mock_post.assert_not_called()
 
     @patch.dict(os.environ, {"GITHUB_TOKEN": "tok", "GITHUB_REPOSITORY": "u/r"}, clear=True)
+    @patch("fetch_plays.requests.get")
     @patch("fetch_plays.requests.post")
-    def test_posts_when_creds_present(self, mock_post):
+    def test_posts_when_creds_present(self, mock_post, mock_get):
+        mock_get.return_value = _resp(200, [])  # no open alert issues
         mock_post.return_value = _resp(201, {"number": 42})
         fetch_plays.create_alert_issue("Spotify", 5)
         self.assertEqual(mock_post.call_count, 1)
@@ -410,11 +412,106 @@ class TestCreateAlertIssue(unittest.TestCase):
         self.assertIn("5", body["title"])
 
     @patch.dict(os.environ, {"GITHUB_TOKEN": "tok", "GITHUB_REPOSITORY": "u/r"}, clear=True)
+    @patch("fetch_plays.requests.get")
     @patch("fetch_plays.requests.post")
-    def test_post_failure_does_not_raise(self, mock_post):
+    def test_existing_open_issue_skips_post(self, mock_post, mock_get):
+        mock_get.return_value = _resp(
+            200, [{"title": "🔴 Spotify fetch failed 3x consecutively"}]
+        )
+        fetch_plays.create_alert_issue("Spotify", 4)
+        mock_post.assert_not_called()
+
+    @patch.dict(os.environ, {"GITHUB_TOKEN": "tok", "GITHUB_REPOSITORY": "u/r"}, clear=True)
+    @patch("fetch_plays.requests.get")
+    @patch("fetch_plays.requests.post")
+    def test_open_issue_for_other_platform_does_not_block(self, mock_post, mock_get):
+        mock_get.return_value = _resp(
+            200, [{"title": "🔴 SoundCloud fetch failed 3x consecutively"}]
+        )
+        mock_post.return_value = _resp(201, {"number": 43})
+        fetch_plays.create_alert_issue("Spotify", 3)
+        self.assertEqual(mock_post.call_count, 1)
+
+    @patch.dict(os.environ, {"GITHUB_TOKEN": "tok", "GITHUB_REPOSITORY": "u/r"}, clear=True)
+    @patch("fetch_plays.requests.get")
+    @patch("fetch_plays.requests.post")
+    def test_lookup_failure_still_posts(self, mock_post, mock_get):
+        mock_get.side_effect = Exception("network down")
+        mock_post.return_value = _resp(201, {"number": 44})
+        fetch_plays.create_alert_issue("Spotify", 3)
+        self.assertEqual(mock_post.call_count, 1)
+
+    @patch.dict(os.environ, {"GITHUB_TOKEN": "tok", "GITHUB_REPOSITORY": "u/r"}, clear=True)
+    @patch("fetch_plays.requests.get")
+    @patch("fetch_plays.requests.post")
+    def test_non_201_response_does_not_raise(self, mock_post, mock_get):
+        mock_get.return_value = _resp(200, [])
+        mock_post.return_value = _resp(403, {"message": "forbidden"})
+        # Must not raise
+        fetch_plays.create_alert_issue("Spotify", 3)
+
+    @patch.dict(os.environ, {"GITHUB_TOKEN": "tok", "GITHUB_REPOSITORY": "u/r"}, clear=True)
+    @patch("fetch_plays.requests.get")
+    @patch("fetch_plays.requests.post")
+    def test_post_failure_does_not_raise(self, mock_post, mock_get):
+        mock_get.return_value = _resp(200, [])
         mock_post.side_effect = Exception("boom")
         # Must not raise
         fetch_plays.create_alert_issue("Apple Music", 3)
+
+
+# ─── Failure tracker & atomic writes ─────────────────────────────────────────
+
+class TestFailureTracker(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+        self._dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._dir.cleanup)
+        from pathlib import Path
+        self.tracker_path = Path(self._dir.name) / ".fetch_failures.json"
+        patcher = patch.object(fetch_plays, "FAIL_TRACKER", self.tracker_path)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_missing_file_returns_defaults(self):
+        self.assertEqual(
+            fetch_plays.load_failure_tracker(),
+            {"soundcloud": 0, "spotify": 0, "apple_music": 0},
+        )
+
+    def test_corrupt_file_returns_defaults_instead_of_raising(self):
+        self.tracker_path.write_text('{"soundcloud": 2, "spo')  # truncated
+        self.assertEqual(
+            fetch_plays.load_failure_tracker(),
+            {"soundcloud": 0, "spotify": 0, "apple_music": 0},
+        )
+
+    def test_partial_file_backfills_missing_platforms(self):
+        self.tracker_path.write_text('{"soundcloud": 2}')
+        tracker = fetch_plays.load_failure_tracker()
+        self.assertEqual(tracker["soundcloud"], 2)
+        self.assertEqual(tracker["spotify"], 0)
+        self.assertEqual(tracker["apple_music"], 0)
+
+    def test_save_roundtrip_and_no_tmp_left_behind(self):
+        fetch_plays.save_failure_tracker({"soundcloud": 1, "spotify": 0, "apple_music": 0})
+        self.assertEqual(fetch_plays.load_failure_tracker()["soundcloud"], 1)
+        leftovers = list(self.tracker_path.parent.glob("*.tmp"))
+        self.assertEqual(leftovers, [])
+
+
+class TestAtomicWriteJson(unittest.TestCase):
+    def test_failed_serialization_leaves_existing_file_intact(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as d:
+            target = Path(d) / "plays.json"
+            target.write_text('{"good": true}')
+            with self.assertRaises(TypeError):
+                fetch_plays._atomic_write_json(target, {"bad": object()})
+            # Original content untouched, no temp debris
+            self.assertEqual(json.loads(target.read_text()), {"good": True})
+            self.assertEqual(list(Path(d).glob("*.tmp")), [])
 
 
 # ─── SoundCloud RSS parsing ──────────────────────────────────────────────────

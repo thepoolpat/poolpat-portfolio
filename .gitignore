@@ -5,7 +5,8 @@ dist/
 .env
 .env.*
 !.env.example
-.fetch_failures.json
+# data/.fetch_failures.json is intentionally committed: the consecutive-failure
+# counter must persist across CI runs or the alert threshold can never trigger.
 *.p8
 *.pem
 *.key

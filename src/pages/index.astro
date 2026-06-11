@@ -31,12 +31,17 @@ const infoByCode = new Map(geoCountries.map((c) => [c.code, c]));
 // Ireland (~14,846 combined) so dominates that a linear ramp would wash everyone
 // else to nothing — map LOG(plays) to the orange's opacity so small markets
 // (incl. the single-play African / South American countries) stay visible.
-const logMin = Math.log(Math.min(...geoCountries.map((c) => c.plays)));
-const logMax = Math.log(Math.max(...geoCountries.map((c) => c.plays)));
+// Clamp plays to >= 1 before log (log(0) = -Infinity would NaN every fill),
+// and short-circuit a degenerate single-value range (0/0 = NaN).
+const logPlays = geoCountries.map((c) => Math.log(Math.max(1, c.plays)));
+const logMin = Math.min(...logPlays);
+const logMax = Math.max(...logPlays);
 function mapFill(code: string | null): string {
   const info = code ? infoByCode.get(code) : undefined;
   if (!info) return "var(--map-empty)";
-  const t = (Math.log(info.plays) - logMin) / (logMax - logMin); // 0..1
+  const t = logMax === logMin
+    ? 1
+    : (Math.log(Math.max(1, info.plays)) - logMin) / (logMax - logMin); // 0..1
   return `rgba(255,85,0,${(0.18 + t * 0.82).toFixed(3)})`; // --accent-sc, dim → vivid
 }
 const mapAria = `World map of where Poolpat is heard on SoundCloud and Apple Music, ${countryCount} countries shaded by combined all-time play count. Highest: ${geoCountries.slice(0, 5).map((c) => `${c.name} ${fmt(c.plays)}`).join(", ")}.`;
@@ -98,9 +103,11 @@ const artistJsonLd = {
 
   <!-- Hero Carousel -->
   <section class="hero" role="region" aria-roledescription="carousel" aria-label="Featured releases">
+    <!-- Inactive slides are hidden with opacity only — `inert` keeps their
+         links out of the tab order and the accessibility tree. -->
     <div class="hero-stage" id="hero-stage">
       {releases.map((r, i) => (
-        <div class={`hero-slide${i === 0 ? " active" : ""}`} data-idx={i}>
+        <div class={`hero-slide${i === 0 ? " active" : ""}`} data-idx={i} inert={i !== 0}>
           <div class="artwork">
             <img src={art(r)} alt={`${r.title} cover artwork`} width="1200" height="1200" loading={i === 0 ? "eager" : "lazy"} decoding="async" />
           </div>
@@ -201,7 +208,10 @@ const artistJsonLd = {
 
     function showSlide(i: number) {
       current = (i + slides.length) % slides.length;
-      slides.forEach((s, idx) => s.classList.toggle("active", idx === current));
+      slides.forEach((s, idx) => {
+        s.classList.toggle("active", idx === current);
+        s.toggleAttribute("inert", idx !== current);
+      });
       dots.forEach((d, idx) => {
         d.classList.toggle("active", idx === current);
         d.setAttribute("aria-current", idx === current ? "true" : "false");
@@ -227,10 +237,12 @@ const artistJsonLd = {
     }));
 
     const hero = document.querySelector(".hero")!;
+    // mouseleave must not re-enable auto-rotation for reduced-motion users.
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     hero.addEventListener("mouseenter", () => { paused = true; showSlide(current); restartTimer(); });
-    hero.addEventListener("mouseleave", () => { paused = false; showSlide(current); restartTimer(); });
+    hero.addEventListener("mouseleave", () => { paused = reducedMotion; showSlide(current); restartTimer(); });
 
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (reducedMotion) {
       paused = true;
       showSlide(0);
     } else {
