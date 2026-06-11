@@ -24,15 +24,6 @@ jobs:
   fetch:
     runs-on: ubuntu-latest
 
-    # Shared env at job level — step-level env would shadow $GITHUB_ENV
-    # writes from earlier steps and break in-process token rotation.
-    env:
-      SPOTIFY_CLIENT_ID:     ${{ secrets.SPOTIFY_CLIENT_ID }}
-      SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
-      SPOTIFY_REFRESH_TOKEN: ${{ secrets.SPOTIFY_REFRESH_TOKEN }}
-      GH_TOKEN:              ${{ secrets.GH_PAT }}
-      GITHUB_REPOSITORY:     ${{ github.repository }}
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -44,25 +35,50 @@ jobs:
           cache: pip
           cache-dependency-path: pipeline/requirements.txt
 
+      # No secrets in env here: a compromised dependency's install hooks
+      # must not see GH_PAT (it can write repo secrets) or Spotify creds.
       - name: Install dependencies
         run: pip install -r pipeline/requirements.txt
 
+      # Secrets are step-scoped. Token rotation writes the new refresh token
+      # to $GITHUB_ENV *inside* this step; runtime $GITHUB_ENV values are not
+      # shadowed by the next step's env block (which doesn't set
+      # SPOTIFY_REFRESH_TOKEN anyway — playlists use client_credentials).
       - name: Fetch play counts
         id: fetch_plays
         continue-on-error: true
         env:
-          APPLE_MUSIC_TOKEN: ${{ secrets.APPLE_MUSIC_TOKEN }}
+          SPOTIFY_CLIENT_ID:     ${{ secrets.SPOTIFY_CLIENT_ID }}
+          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+          SPOTIFY_REFRESH_TOKEN: ${{ secrets.SPOTIFY_REFRESH_TOKEN }}
+          GH_TOKEN:              ${{ secrets.GH_PAT }}
+          GITHUB_REPOSITORY:     ${{ github.repository }}
+          APPLE_MUSIC_TOKEN:     ${{ secrets.APPLE_MUSIC_TOKEN }}
         run: python pipeline/fetch_plays.py
 
       - name: Fetch playlist data
         id: fetch_playlists
         continue-on-error: true
         env:
-          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
+          SPOTIFY_CLIENT_ID:     ${{ secrets.SPOTIFY_CLIENT_ID }}
+          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+          RAPIDAPI_KEY:          ${{ secrets.RAPIDAPI_KEY }}
         run: python pipeline/fetch_playlists.py
 
+      # Only commit if at least one fetcher succeeded, and never commit a
+      # file that doesn't parse as JSON — a truncated plays.json pushed to
+      # main would poison the next run's monotonic baseline.
       - name: Commit data updates
+        if: steps.fetch_plays.outcome == 'success' || steps.fetch_playlists.outcome == 'success'
         run: |
+          python -c '
+          import json, pathlib, sys
+          for p in pathlib.Path("data").glob("*.json"):
+              try:
+                  json.loads(p.read_text())
+              except ValueError as e:
+                  sys.exit(f"::error::{p} is not valid JSON: {e}")
+          '
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/
@@ -70,6 +86,8 @@ jobs:
             echo "no data changes to commit"
           else
             git commit -m "data: weekly update $(date -u +%Y-%m-%d)"
+            # main may have moved during the run (e.g. a Dependabot merge)
+            git pull --rebase origin main
             git push
           fi
 
