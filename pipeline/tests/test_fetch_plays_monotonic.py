@@ -66,6 +66,17 @@ class TestMonotonicMergeTracks(unittest.TestCase):
         merged = monotonic_merge_tracks({"a": None}, {"a": 10})
         self.assertEqual(merged["a"], 10)
 
+    def test_existing_string_value_does_not_crash_merge(self):
+        # plays.json is hand-edited for AM/SP manual totals — a stray string
+        # must not raise TypeError in max(); the fetched number wins.
+        merged = monotonic_merge_tracks({"a": "500"}, {"a": 100})
+        self.assertEqual(merged["a"], 100)
+
+    def test_existing_string_value_kept_when_not_fetched(self):
+        # Untouched existing entries pass through verbatim, even if malformed.
+        merged = monotonic_merge_tracks({"a": "500", "b": 10}, {"b": 20})
+        self.assertEqual(merged, {"a": "500", "b": 20})
+
     def test_does_not_mutate_existing(self):
         existing = {"a": 100}
         monotonic_merge_tracks(existing, {"a": 200, "b": 50})
