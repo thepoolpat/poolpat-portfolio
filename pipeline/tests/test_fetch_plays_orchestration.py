@@ -123,6 +123,23 @@ class TestFetchSoundcloudAll(unittest.TestCase):
         self.assertIn("track a", sc_data["tracks"])
         self.assertNotIn("  Track A  ", sc_data["tracks"])
 
+    @patch("fetch_plays.fetch_soundcloud_profile")
+    @patch("fetch_plays.fetch_soundcloud_plays_v2")
+    @patch("fetch_plays.fetch_soundcloud_rss")
+    @patch("fetch_plays._get_soundcloud_client_id")
+    def test_rss_nfd_title_does_not_duplicate_nfc_track(self, _cid, mock_rss, mock_v2, mock_profile):
+        """An NFD-form RSS title must not re-create a row for an existing NFC track."""
+        import unicodedata
+        nfc = unicodedata.normalize("NFC", "Déjà 30 Piges")
+        nfd = unicodedata.normalize("NFD", "Déjà 30 Piges")
+        mock_rss.return_value = [{"title": nfd}]
+        mock_v2.return_value = {nfc: 1355}
+        mock_profile.return_value = {}
+
+        sc_data, _, _ = fetch_plays.fetch_soundcloud_all({"tracks": {nfc: 1300}, "total_plays": 1300})
+
+        self.assertEqual(sc_data["tracks"], {nfc: 1355})  # one row, NFC form, max value
+
 
 # ─── Spotify orchestration ───────────────────────────────────────────────────
 

@@ -131,7 +131,7 @@ const artistJsonLd = {
 
   <!-- Quick Stats -->
   <section class="section">
-    <h2>Live Stats</h2>
+    <h2><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span> Live Stats</h2>
     <div class="stats-grid">
       <StatCard label="Total Plays" value={grandTotal} sub="All platforms" />
       <StatCard label="SoundCloud" value={scTotal} color="var(--accent-sc)" />
@@ -188,13 +188,6 @@ const artistJsonLd = {
       <a class="nav-link" href="https://ffm.bio/poolpat" target="_blank" rel="noopener noreferrer">Stream &amp; Connect</a>
     </nav>
   </section>
-
-  <!-- Navigation -->
-  <nav class="nav-links" aria-label="Site navigation">
-    <a class="nav-link" href={`${import.meta.env.BASE_URL}stats/`}>Play Stats</a>
-    <a class="nav-link" href={`${import.meta.env.BASE_URL}discography/`}>Full Discography</a>
-    <a class="nav-link" href="https://ffm.bio/poolpat" target="_blank" rel="noopener noreferrer">Stream &amp; Connect</a>
-  </nav>
 
   <!-- Carousel Script -->
   <script>

@@ -197,10 +197,10 @@ const playlistFetchedAt = playlistsData.fetched_at
   <script>
     // @ts-nocheck — bundled client chart code (chart.js + raw DOM access). Kept
     // unchecked to match its prior inline status; it's plain runtime JS, not typed.
-    import { Chart, LineController, LineElement, PointElement, LogarithmicScale, TimeScale, Legend, Title, Tooltip } from "chart.js";
+    import { Chart, LineController, LineElement, PointElement, LogarithmicScale, TimeScale, Legend, Tooltip } from "chart.js";
     import "chartjs-adapter-date-fns";
 
-    Chart.register(LineController, LineElement, PointElement, LogarithmicScale, TimeScale, Legend, Title, Tooltip);
+    Chart.register(LineController, LineElement, PointElement, LogarithmicScale, TimeScale, Legend, Tooltip);
 
     (async () => {
       // Series are computed at build time (see frontmatter) and shipped as
@@ -295,32 +295,20 @@ const playlistFetchedAt = playlistsData.fetched_at
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
+            // No in-chart title: the section h2 above the panel is the single heading.
+            // Default generateLabels stays — it injects fontColor from labels.color;
+            // a custom factory here once dropped it, drawing the legend text near-black.
             legend: {
               position: "top",
               labels: {
                 color: "#f5f5f7",
-                font: { size: 14, weight: "bold" },
-                padding: 20,
-                boxWidth: 32,
-                boxHeight: 14,
-                generateLabels(chart) {
-                  return chart.data.datasets.map((ds, i) => ({
-                    text: ds.label,
-                    fillStyle: ds.borderColor,
-                    strokeStyle: ds.borderColor,
-                    lineWidth: 0,
-                    hidden: !chart.isDatasetVisible(i),
-                    datasetIndex: i
-                  }));
-                }
+                usePointStyle: true,
+                pointStyle: "circle",
+                boxWidth: 8,
+                boxHeight: 8,
+                padding: 16,
+                font: { size: 12, weight: "600" }
               }
-            },
-            title: {
-              display: true,
-              text: "Play Count History",
-              color: "#f5f5f7",
-              font: { size: 18, weight: "bold", family: "system-ui, -apple-system, sans-serif" },
-              padding: { top: 10, bottom: 20 }
             },
             tooltip: {
               backgroundColor: "rgba(0,0,0,0.8)",
@@ -342,8 +330,7 @@ const playlistFetchedAt = playlistsData.fetched_at
                 displayFormats: { day: "d MMM", month: "MMM yyyy", year: "yyyy" }
               },
               ticks: { color: "#98989d", maxTicksLimit: 12, font: { size: 11 }, maxRotation: 0, autoSkip: true },
-              grid: { color: "rgba(240,240,245,0.08)" },
-              title: { display: true, text: "Timeline", color: "#98989d", font: { size: 14, weight: "bold" } }
+              grid: { color: "rgba(240,240,245,0.08)" }
             },
             y: {
               type: "logarithmic",
