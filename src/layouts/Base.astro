@@ -30,6 +30,21 @@ const footerAmHref = link({
   id: "1716939831",
   campaign: hashCampaign("web-portfolio-footer-artist"),
 });
+
+const baseUrl = import.meta.env.BASE_URL;
+const path = Astro.url.pathname;
+const navActive = {
+  home: path === baseUrl || path === baseUrl.replace(/\/$/, ""),
+  stats: path.startsWith(`${baseUrl}stats`),
+  disco: path.startsWith(`${baseUrl}discography`) || path.startsWith(`${baseUrl}releases`),
+};
+const navAmHref = link({
+  storefront: "ie",
+  type: "artist",
+  slug: "poolpat",
+  id: "1716939831",
+  campaign: hashCampaign("web-portfolio-nav-listen"),
+});
 ---
 <!doctype html>
 <html lang="en">
@@ -50,6 +65,15 @@ const footerAmHref = link({
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to content</a>
+  <div class="backdrop" aria-hidden="true"><i></i><i></i><i></i></div>
+  <nav class="glass-nav" aria-label="Site">
+    <a class="gn-home" href={baseUrl} aria-current={navActive.home ? "page" : undefined}>Poolpat</a>
+    <div class="gn-links">
+      <a class="gn-link" href={`${baseUrl}stats/`} aria-current={navActive.stats ? "page" : undefined}>Stats</a>
+      <a class="gn-link" href={`${baseUrl}discography/`} aria-current={navActive.disco ? "page" : undefined}>Discography</a>
+    </div>
+    <a class="gn-cta" href={navAmHref} target="_blank" rel="noopener noreferrer" aria-label="Listen to Poolpat on Apple Music">Listen</a>
+  </nav>
   <main id="main-content">
     <slot />
   </main>

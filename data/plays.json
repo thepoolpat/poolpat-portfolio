@@ -1,6 +1,6 @@
 {
   "artist": "Poolpat",
-  "last_updated": "2026-06-07T08:48:51.649036+00:00",
+  "last_updated": "2026-06-13T00:25:36+01:00",
   "soundcloud": {
     "url": "https://soundcloud.com/poolpat",
     "tracks": {
@@ -43,14 +43,10 @@
       "Déjà 30 Piges (feat. Djar One & Jaws) [Remix]": 1355,
       "O'sho | Drogba [x] Poolpat [=] Danilo Milk [~]": 0,
       "Seven Nation Army": 161,
-      "Cara Mo Bhean Chéile - Freestyle": 260,
       "Otaku’s Doodle": 372,
-      "Cara mo bhean chéile": 149,
-      "Ça Me Saoule": 756,
-      "Schneck De Traître X L.Stoch": 775,
-      "Déjà 30 Piges (feat. Djar One & Jaws) [Remix]": 1355
+      "Cara mo bhean chéile": 149
     },
-    "total_plays": 28567,
+    "total_plays": 28586,
     "total_tracks": 47,
     "followers": 131,
     "fetch_status": "success",
@@ -83,7 +79,7 @@
       "Folks Now!": 235,
       "Damsels in distress - Instrumental": 43
     },
-    "total_streams": 19614,
+    "total_streams": 19742,
     "total_tracks": 21,
     "monthly_listeners": 14,
     "streams_28d": 26,
@@ -228,7 +224,7 @@
     "total_tracks": 21,
     "note": "Apple Music play counts manually updated from Apple Music for Artists.",
     "fetch_status": "preserved",
-    "total_plays": 4104,
+    "total_plays": 4108,
     "total_shazams": 18,
     "radio_spins": 1,
     "avg_daily_listeners": 1,
