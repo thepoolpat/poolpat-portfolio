@@ -35,7 +35,7 @@ import requests
 SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
 SPOTIFY_API_BASE = "https://api.spotify.com/v1"
 ARTIST_ID = "4rr3o9anpUXitNXo0W4uX7"  # Poolpat
-OUTPUT_PATH = Path("data/playlists.json")
+OUTPUT_PATH = Path(__file__).resolve().parent.parent / "data" / "playlists.json"
 PLAYLISTCHECK_URL = "https://playlistcheck.p.rapidapi.com/playlist"
 
 
@@ -77,18 +77,28 @@ def get_spotify_token() -> str:
 # ---------------------------------------------------------------------------
 # Spotify helpers
 # ---------------------------------------------------------------------------
+MAX_RATE_LIMIT_RETRIES = 5
+MAX_RETRY_AFTER_S = 30  # Spotify can send Retry-After in the thousands; cap it
+
+
 def spotify_get(path: str, token: str, params: dict | None = None) -> dict:
-    resp = requests.get(
-        f"{SPOTIFY_API_BASE}{path}",
-        headers={"Authorization": f"Bearer {token}"},
-        params=params or {},
-        timeout=15,
-    )
-    if resp.status_code == 429:
-        retry_after = int(resp.headers.get("Retry-After", 5))
+    for _ in range(MAX_RATE_LIMIT_RETRIES):
+        resp = requests.get(
+            f"{SPOTIFY_API_BASE}{path}",
+            headers={"Authorization": f"Bearer {token}"},
+            params=params or {},
+            timeout=15,
+        )
+        if resp.status_code != 429:
+            resp.raise_for_status()
+            return resp.json()
+        try:
+            retry_after = int(resp.headers.get("Retry-After", 5))
+        except ValueError:  # RFC allows an HTTP-date here
+            retry_after = 5
+        retry_after = min(max(retry_after, 1), MAX_RETRY_AFTER_S)
         print(f"  Spotify rate limit — sleeping {retry_after}s")
         time.sleep(retry_after)
-        return spotify_get(path, token, params)
     resp.raise_for_status()
     return resp.json()
 
@@ -226,7 +236,11 @@ def main() -> None:
     }
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT_PATH.write_text(json.dumps(output, indent=2, ensure_ascii=False))
+    # Write atomically so a crash mid-write can't leave truncated JSON
+    # for the workflow's commit step to push.
+    tmp = OUTPUT_PATH.with_name(OUTPUT_PATH.name + ".tmp")
+    tmp.write_text(json.dumps(output, indent=2, ensure_ascii=False))
+    os.replace(tmp, OUTPUT_PATH)
     print(f"\n✅ {len(playlists)} playlists → {OUTPUT_PATH}")
 
 

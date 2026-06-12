@@ -93,6 +93,37 @@ class TestSpotifyGet(unittest.TestCase):
         fetch_playlists.spotify_get("/foo", "tok")
         mock_sleep.assert_called_once_with(5)
 
+    @patch("fetch_playlists.time.sleep")
+    @patch("fetch_playlists.requests.get")
+    def test_429_persistent_gives_up_after_max_retries(self, mock_get, mock_sleep):
+        # A permanently rate-limited endpoint must not recurse/loop forever.
+        mock_get.return_value = _resp(429, headers={"Retry-After": "2"})
+        with self.assertRaises(requests.HTTPError):
+            fetch_playlists.spotify_get("/foo", "tok")
+        self.assertEqual(mock_get.call_count, fetch_playlists.MAX_RATE_LIMIT_RETRIES)
+
+    @patch("fetch_playlists.time.sleep")
+    @patch("fetch_playlists.requests.get")
+    def test_429_huge_retry_after_is_capped(self, mock_get, mock_sleep):
+        # Spotify can send Retry-After in the thousands of seconds.
+        mock_get.side_effect = [
+            _resp(429, headers={"Retry-After": "76000"}),
+            _resp(200, {"ok": True}),
+        ]
+        fetch_playlists.spotify_get("/foo", "tok")
+        mock_sleep.assert_called_once_with(fetch_playlists.MAX_RETRY_AFTER_S)
+
+    @patch("fetch_playlists.time.sleep")
+    @patch("fetch_playlists.requests.get")
+    def test_429_http_date_retry_after_falls_back_to_default(self, mock_get, mock_sleep):
+        # RFC 9110 allows Retry-After as an HTTP-date; int() must not blow up.
+        mock_get.side_effect = [
+            _resp(429, headers={"Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT"}),
+            _resp(200, {"ok": True}),
+        ]
+        fetch_playlists.spotify_get("/foo", "tok")
+        mock_sleep.assert_called_once_with(5)
+
     @patch("fetch_playlists.requests.get")
     def test_500_raises(self, mock_get):
         mock_get.return_value = _resp(500)

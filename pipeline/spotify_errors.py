@@ -43,7 +43,10 @@ def raise_for_status(response) -> None:
     if response.status_code == 401:
         raise SpotifyAuthError(401, msg)
     if response.status_code == 429:
-        retry_after = int(response.headers.get("Retry-After", 1))
+        try:
+            retry_after = int(response.headers.get("Retry-After", 1))
+        except ValueError:  # RFC allows an HTTP-date here
+            retry_after = 1
         raise SpotifyRateLimitError(retry_after, msg)
     if response.status_code == 404:
         raise SpotifyNotFoundError(404, msg)

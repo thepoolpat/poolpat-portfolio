@@ -11,6 +11,7 @@ import json
 import os
 import re
 import sys
+import unicodedata
 import defusedxml.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
@@ -44,15 +45,38 @@ ALERT_THRESHOLD = 3  # consecutive failures before creating a GitHub Issue
 
 # ─── Monotonic helpers ───────────────────────────────────────────────────────
 
+def _nfc_tracks(tracks: dict) -> dict:
+    """Collapse Unicode-equivalent track titles onto their NFC form.
+
+    The Insights export and the public-page scrape disagree on normalization
+    for accented titles (NFC vs NFD), which created permanent duplicate rows
+    ("Déjà 30 Piges" twice) that the monotonic merge then preserved forever.
+    When two forms collide, keep the MAX so the invariant survives the collapse;
+    non-colliding entries pass through with their value untouched."""
+    out: dict = {}
+    for title, plays in tracks.items():
+        key = unicodedata.normalize("NFC", title)
+        if key in out:
+            a = out[key] if isinstance(out[key], (int, float)) else 0
+            b = plays if isinstance(plays, (int, float)) else 0
+            out[key] = max(a, b)
+        else:
+            out[key] = plays
+    return out
+
+
 def monotonic_merge_tracks(existing: dict, fetched: dict) -> dict:
     """Merge track dicts: keep the MAX of existing vs fetched per track.
     Never allow a track's play count to decrease.
-    New tracks from fetched are added. Existing tracks not in fetched are kept."""
-    merged = dict(existing)  # start with all existing tracks
-    for title, plays in fetched.items():
+    New tracks from fetched are added. Existing tracks not in fetched are kept.
+    Titles are compared in NFC form so NFC/NFD variants of the same track merge."""
+    merged = _nfc_tracks(existing)  # all existing tracks, dedup'd by NFC title
+    for title, plays in _nfc_tracks(fetched).items():
         if not isinstance(plays, (int, float)) or plays <= 0:
             continue  # skip zero/null fetched values — keep existing
-        old = merged.get(title, 0) or 0
+        old = merged.get(title, 0)
+        if not isinstance(old, (int, float)):
+            old = 0  # hand-edited plays.json may contain strings/nulls
         merged[title] = max(old, plays)
     return merged
 
@@ -201,9 +225,11 @@ def fetch_soundcloud_all(existing_sc: dict) -> tuple[dict, list[dict], bool]:
         # Merge API data with existing, keeping the MAX per track (monotonic)
         merged = monotonic_merge_tracks(existing_tracks, api_plays)
 
-        # Also add any RSS-only titles not in API or existing (new releases)
+        # Also add any RSS-only titles not in API or existing (new releases).
+        # NFC-normalize first: merged keys are all NFC after monotonic_merge_tracks,
+        # so a raw NFD title from the feed would re-create a duplicate row here.
         for rt in rss_tracks:
-            title = rt["title"]
+            title = unicodedata.normalize("NFC", rt["title"])
             if title not in merged:
                 # Check fuzzy match
                 fuzzy = next((k for k in merged if k.lower().strip() == title.lower().strip()), None)
@@ -494,7 +520,8 @@ def fetch_apple_music_all(existing_am: dict) -> tuple[dict, bool]:
 
     # Always preserve existing manual data
     has_manual = bool(existing_am.get("tracks")) and any(
-        v is not None and v > 0 for v in existing_am.get("tracks", {}).values()
+        isinstance(v, (int, float)) and v > 0
+        for v in existing_am.get("tracks", {}).values()
     )
 
     if has_manual:
@@ -517,15 +544,39 @@ def fetch_apple_music_all(existing_am: dict) -> tuple[dict, bool]:
 # ─── Failure tracking & alerting ─────────────────────────────────────────────
 
 def load_failure_tracker() -> dict:
+    defaults = {"soundcloud": 0, "spotify": 0, "apple_music": 0}
     if FAIL_TRACKER.exists():
-        with open(FAIL_TRACKER) as f:
-            return json.load(f)
-    return {"soundcloud": 0, "spotify": 0, "apple_music": 0}
+        try:
+            with open(FAIL_TRACKER) as f:
+                return {**defaults, **json.load(f)}
+        except (json.JSONDecodeError, OSError) as e:
+            # Tracker is expendable — a corrupt file must not kill the fetch.
+            print(f"  WARN: failure tracker unreadable ({e}), resetting", file=sys.stderr)
+    return defaults
 
 
 def save_failure_tracker(tracker: dict) -> None:
-    with open(FAIL_TRACKER, "w") as f:
-        json.dump(tracker, f)
+    _atomic_write_json(FAIL_TRACKER, tracker)
+
+
+def _existing_alert_issue(platform: str, token: str, repo: str) -> bool:
+    """True if an open auto-created alert issue for this platform already exists."""
+    try:
+        resp = requests.get(
+            f"https://api.github.com/repos/{repo}/issues",
+            headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"},
+            params={"labels": "automated", "state": "open", "per_page": 100},
+            timeout=30,
+        )
+        if resp.status_code == 200:
+            return any(
+                platform in issue.get("title", "") and "fetch failed" in issue.get("title", "")
+                for issue in resp.json()
+            )
+        print(f"  ALERT: issue lookup HTTP {resp.status_code}, assuming none open", file=sys.stderr)
+    except Exception as e:
+        print(f"  ALERT: issue lookup error: {e}", file=sys.stderr)
+    return False
 
 
 def create_alert_issue(platform: str, consecutive: int) -> None:
@@ -533,6 +584,9 @@ def create_alert_issue(platform: str, consecutive: int) -> None:
     repo = os.environ.get("GITHUB_REPOSITORY")
     if not token or not repo:
         print(f"  ALERT: {platform} failed {consecutive}x (no GH token)")
+        return
+    if _existing_alert_issue(platform, token, repo):
+        print(f"  ALERT: open issue for {platform} already exists, skipping")
         return
     try:
         resp = requests.post(
@@ -552,13 +606,31 @@ def create_alert_issue(platform: str, consecutive: int) -> None:
         )
         if resp.status_code == 201:
             print(f"  ALERT: Created GitHub Issue for {platform}")
+        else:
+            print(f"  ALERT: issue creation failed HTTP {resp.status_code}", file=sys.stderr)
     except Exception as e:
         print(f"  ALERT error: {e}", file=sys.stderr)
 
 
 # ─── Data I/O ────────────────────────────────────────────────────────────────
 
+def _atomic_write_json(path: Path, data) -> None:
+    """Serialize to a temp file, then os.replace() so a crash mid-write can
+    never leave a truncated JSON file (which the commit step would push)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    try:
+        with open(tmp, "w") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        os.replace(tmp, path)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+
+
 def load_existing_data() -> dict:
+    # NOTE: a corrupt plays.json must abort loudly — silently starting from {}
+    # would zero the monotonic baseline.
     if PLAYS_JSON.exists():
         with open(PLAYS_JSON) as f:
             return json.load(f)
@@ -566,9 +638,7 @@ def load_existing_data() -> dict:
 
 
 def save_plays_json(data: dict) -> None:
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    with open(PLAYS_JSON, "w") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+    _atomic_write_json(PLAYS_JSON, data)
     print(f"\nSaved {PLAYS_JSON}")
 
 
@@ -589,8 +659,7 @@ def save_rss_tracks(rss_tracks: list[dict]) -> None:
             for t in rss_tracks
         ],
     }
-    with open(DATA_DIR / "rss_tracks.json", "w") as f:
-        json.dump(rss_data, f, indent=2, ensure_ascii=False)
+    _atomic_write_json(DATA_DIR / "rss_tracks.json", rss_data)
 
 
 def append_history_csv(data: dict) -> None:
@@ -647,7 +716,7 @@ def main():
     if sc_ok:
         failures["soundcloud"] = 0
     else:
-        failures["soundcloud"] += 1
+        failures["soundcloud"] = failures.get("soundcloud", 0) + 1
         if failures["soundcloud"] >= ALERT_THRESHOLD:
             create_alert_issue("SoundCloud", failures["soundcloud"])
 
@@ -659,7 +728,7 @@ def main():
     if sp_ok:
         failures["spotify"] = 0
     else:
-        failures["spotify"] += 1
+        failures["spotify"] = failures.get("spotify", 0) + 1
         if failures["spotify"] >= ALERT_THRESHOLD:
             create_alert_issue("Spotify", failures["spotify"])
 
@@ -668,7 +737,7 @@ def main():
     if am_ok:
         failures["apple_music"] = 0
     else:
-        failures["apple_music"] += 1
+        failures["apple_music"] = failures.get("apple_music", 0) + 1
         if failures["apple_music"] >= ALERT_THRESHOLD:
             create_alert_issue("Apple Music", failures["apple_music"])
 

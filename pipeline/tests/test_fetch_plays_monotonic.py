@@ -6,9 +6,53 @@ this invariant slips, history is wrong forever — these tests are the only
 safety net.
 """
 
+import unicodedata
 import unittest
 
 from fetch_plays import monotonic_merge_tracks, monotonic_total
+
+# The same accented title in both Unicode forms — composed (NFC) and
+# decomposed (NFD). They print identically but are different dict keys.
+NFC_TITLE = unicodedata.normalize("NFC", "Déjà 30 Piges")
+NFD_TITLE = unicodedata.normalize("NFD", "Déjà 30 Piges")
+
+
+class TestUnicodeNormalizedMerge(unittest.TestCase):
+    """NFC/NFD variants of one track must merge to a single NFC row.
+
+    Insights exports and the public-page scrape disagree on normalization for
+    accented titles; before normalization the merge carried both forms forever
+    as duplicate rows."""
+
+    def test_titles_differ_as_raw_keys(self):
+        # Guard: if this fails the fixture is meaningless.
+        self.assertNotEqual(NFC_TITLE, NFD_TITLE)
+
+    def test_nfd_existing_merges_with_nfc_fetched(self):
+        merged = monotonic_merge_tracks({NFD_TITLE: 100}, {NFC_TITLE: 150})
+        self.assertEqual(merged, {NFC_TITLE: 150})
+
+    def test_monotonic_across_forms_lower_fetch_keeps_existing(self):
+        merged = monotonic_merge_tracks({NFD_TITLE: 500}, {NFC_TITLE: 100})
+        self.assertEqual(merged, {NFC_TITLE: 500})
+
+    def test_pre_existing_duplicate_rows_collapse_to_max(self):
+        # Data written before the fix can hold BOTH forms; merging must
+        # collapse them even when the fetch is empty.
+        merged = monotonic_merge_tracks({NFD_TITLE: 1355, NFC_TITLE: 1360}, {})
+        self.assertEqual(merged, {NFC_TITLE: 1360})
+
+    def test_new_nfd_track_is_stored_as_nfc(self):
+        merged = monotonic_merge_tracks({}, {NFD_TITLE: 50})
+        self.assertEqual(merged, {NFC_TITLE: 50})
+
+    def test_unaccented_titles_unaffected(self):
+        merged = monotonic_merge_tracks({"a": 100}, {"b": 50})
+        self.assertEqual(merged, {"a": 100, "b": 50})
+
+    def test_collapse_ignores_non_numeric_duplicate(self):
+        merged = monotonic_merge_tracks({NFD_TITLE: None, NFC_TITLE: 70}, {})
+        self.assertEqual(merged, {NFC_TITLE: 70})
 
 
 class TestMonotonicMergeTracks(unittest.TestCase):
@@ -65,6 +109,17 @@ class TestMonotonicMergeTracks(unittest.TestCase):
     def test_existing_none_treated_as_zero(self):
         merged = monotonic_merge_tracks({"a": None}, {"a": 10})
         self.assertEqual(merged["a"], 10)
+
+    def test_existing_string_value_does_not_crash_merge(self):
+        # plays.json is hand-edited for AM/SP manual totals — a stray string
+        # must not raise TypeError in max(); the fetched number wins.
+        merged = monotonic_merge_tracks({"a": "500"}, {"a": 100})
+        self.assertEqual(merged["a"], 100)
+
+    def test_existing_string_value_kept_when_not_fetched(self):
+        # Untouched existing entries pass through verbatim, even if malformed.
+        merged = monotonic_merge_tracks({"a": "500", "b": 10}, {"b": 20})
+        self.assertEqual(merged, {"a": "500", "b": 20})
 
     def test_does_not_mutate_existing(self):
         existing = {"a": 100}

@@ -21,7 +21,10 @@ const artUrl = `${base}${r.artwork}`;
 // Page renders WebP; social cards (og:image/twitter:image) use a JPEG sibling —
 // some link scrapers still don't reliably support WebP. See public/artwork/*.jpg.
 const ogImageUrl = artUrl.replace(/\.webp$/, ".jpg");
-const safeCredits = r.credits?.replace(/<(?!\/?(?:strong|em|br)\b)[^>]*>/gi, "") ?? "";
+// Whitelist exact bare tags only — matching on tag *name* alone would let
+// attributes through (e.g. `<strong onmouseover=…>`), defeating the point
+// of sanitizing before set:html.
+const safeCredits = r.credits?.replace(/<(?!\/?(?:strong|em)>|br\s*\/?>)[^>]*>/gi, "") ?? "";
 
 function toIsoDuration(d?: string): string | undefined {
   if (!d) return undefined;
