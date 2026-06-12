@@ -11,6 +11,7 @@ import json
 import os
 import re
 import sys
+import unicodedata
 import defusedxml.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
@@ -44,12 +45,33 @@ ALERT_THRESHOLD = 3  # consecutive failures before creating a GitHub Issue
 
 # ─── Monotonic helpers ───────────────────────────────────────────────────────
 
+def _nfc_tracks(tracks: dict) -> dict:
+    """Collapse Unicode-equivalent track titles onto their NFC form.
+
+    The Insights export and the public-page scrape disagree on normalization
+    for accented titles (NFC vs NFD), which created permanent duplicate rows
+    ("Déjà 30 Piges" twice) that the monotonic merge then preserved forever.
+    When two forms collide, keep the MAX so the invariant survives the collapse;
+    non-colliding entries pass through with their value untouched."""
+    out: dict = {}
+    for title, plays in tracks.items():
+        key = unicodedata.normalize("NFC", title)
+        if key in out:
+            a = out[key] if isinstance(out[key], (int, float)) else 0
+            b = plays if isinstance(plays, (int, float)) else 0
+            out[key] = max(a, b)
+        else:
+            out[key] = plays
+    return out
+
+
 def monotonic_merge_tracks(existing: dict, fetched: dict) -> dict:
     """Merge track dicts: keep the MAX of existing vs fetched per track.
     Never allow a track's play count to decrease.
-    New tracks from fetched are added. Existing tracks not in fetched are kept."""
-    merged = dict(existing)  # start with all existing tracks
-    for title, plays in fetched.items():
+    New tracks from fetched are added. Existing tracks not in fetched are kept.
+    Titles are compared in NFC form so NFC/NFD variants of the same track merge."""
+    merged = _nfc_tracks(existing)  # all existing tracks, dedup'd by NFC title
+    for title, plays in _nfc_tracks(fetched).items():
         if not isinstance(plays, (int, float)) or plays <= 0:
             continue  # skip zero/null fetched values — keep existing
         old = merged.get(title, 0)
@@ -203,9 +225,11 @@ def fetch_soundcloud_all(existing_sc: dict) -> tuple[dict, list[dict], bool]:
         # Merge API data with existing, keeping the MAX per track (monotonic)
         merged = monotonic_merge_tracks(existing_tracks, api_plays)
 
-        # Also add any RSS-only titles not in API or existing (new releases)
+        # Also add any RSS-only titles not in API or existing (new releases).
+        # NFC-normalize first: merged keys are all NFC after monotonic_merge_tracks,
+        # so a raw NFD title from the feed would re-create a duplicate row here.
         for rt in rss_tracks:
-            title = rt["title"]
+            title = unicodedata.normalize("NFC", rt["title"])
             if title not in merged:
                 # Check fuzzy match
                 fuzzy = next((k for k in merged if k.lower().strip() == title.lower().strip()), None)
