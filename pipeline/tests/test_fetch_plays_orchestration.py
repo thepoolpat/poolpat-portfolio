@@ -677,5 +677,43 @@ class TestFetchSoundcloudPlaysV2(unittest.TestCase):
         self.assertEqual(tracks["t1"], 0)
 
 
+# ─── Failure-tracker persistence ─────────────────────────────────────────────
+
+class TestFailureTrackerPersistence(unittest.TestCase):
+    """The consecutive-failure counter must persist across runs (data/.fetch_failures.json
+    is committed to the repo) or the 3-strike GitHub-Issue alert can never accumulate to
+    ALERT_THRESHOLD — every fresh CI checkout would otherwise restart the counter at zero."""
+
+    def test_committed_seed_file_is_present_and_valid(self):
+        # If this fails, the tracker is untracked again and the alert is dead: a weekly
+        # `git add data/` only re-commits the counter when the file is already tracked.
+        self.assertTrue(
+            fetch_plays.FAIL_TRACKER.exists(),
+            "data/.fetch_failures.json must be committed for the failure alert to persist",
+        )
+        tracker = fetch_plays.load_failure_tracker()
+        for platform in ("soundcloud", "spotify", "apple_music"):
+            self.assertIn(platform, tracker)
+            self.assertIsInstance(tracker[platform], int)
+
+    def test_increment_round_trips_through_save_and_load(self):
+        import pathlib
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as d:
+            tmp = pathlib.Path(d) / ".fetch_failures.json"
+            with patch.object(fetch_plays, "FAIL_TRACKER", tmp):
+                self.assertEqual(
+                    fetch_plays.load_failure_tracker(),
+                    {"soundcloud": 0, "spotify": 0, "apple_music": 0},
+                )  # defaults when the file is absent
+                tracker = fetch_plays.load_failure_tracker()
+                tracker["spotify"] += 1
+                fetch_plays.save_failure_tracker(tracker)
+                # a subsequent run reads the incremented value back (the persistence the
+                # committed seed guarantees in CI)
+                self.assertEqual(fetch_plays.load_failure_tracker()["spotify"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()
