@@ -51,7 +51,8 @@ const navAmHref = link({
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#0b0b0c" />
+  <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0b0b0c" media="(prefers-color-scheme: dark)" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self'; base-uri 'self'; object-src 'none'" />
   <SEOHead
     title={title}
@@ -67,6 +68,7 @@ const navAmHref = link({
   <a class="skip-link" href="#main-content">Skip to content</a>
   <div class="backdrop" aria-hidden="true"><i></i><i></i><i></i></div>
   <nav class="glass-nav" aria-label="Site">
+    <span class="gn-indicator" aria-hidden="true"></span>
     <a class="gn-home" href={baseUrl} aria-current={navActive.home ? "page" : undefined}>Poolpat</a>
     <div class="gn-links">
       <a class="gn-link" href={`${baseUrl}stats/`} aria-current={navActive.stats ? "page" : undefined}>Stats</a>
@@ -83,5 +85,36 @@ const navAmHref = link({
     <a href="https://soundcloud.com/poolpat" target="_blank" rel="noopener">SoundCloud</a> &middot;
     <a href="https://open.spotify.com/artist/4rr3o9anpUXitNXo0W4uX7" target="_blank" rel="noopener">Spotify</a>
   </footer>
+  <script>
+    // Native segmented-control pill: slide the highlight under the active tab,
+    // and follow hover / touch the way the Music and Instagram tab bars do.
+    const nav = document.querySelector<HTMLElement>(".glass-nav");
+    const ind = nav?.querySelector<HTMLElement>(".gn-indicator");
+    if (nav && ind) {
+      const tabs = Array.from(nav.querySelectorAll<HTMLElement>(".gn-home, .gn-link"));
+      const active = tabs.find((t) => t.getAttribute("aria-current") === "page") ?? tabs[0];
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const moveTo = (el?: HTMLElement) => {
+        if (!el) return;
+        const nr = nav.getBoundingClientRect();
+        const r = el.getBoundingClientRect();
+        ind.style.setProperty("--ind-x", `${r.left - nr.left}px`);
+        ind.style.setProperty("--ind-w", `${r.width}px`);
+        ind.style.setProperty("--ind-h", `${r.height}px`);
+      };
+      const settle = () => moveTo(active);
+      // Position under the active tab after first layout, then reveal (no slide-in flash).
+      requestAnimationFrame(() => { settle(); nav.classList.add("nav-ready"); });
+      window.addEventListener("load", settle);
+      window.addEventListener("resize", settle);
+      if (!reduce) {
+        tabs.forEach((t) => {
+          t.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") moveTo(t); });
+          t.addEventListener("pointerdown", () => moveTo(t));
+        });
+        nav.addEventListener("pointerleave", settle);
+      }
+    }
+  </script>
 </body>
 </html>

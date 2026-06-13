@@ -15,8 +15,23 @@
   --accent-blue: #58a6ff;
   --map-empty: #2a2a2e;
   --map-stroke: rgba(255,255,255,0.14);
-  --glass-bg: rgba(22,22,26,0.5);
-  --glass-bg-lite: rgba(30,30,34,0.72);
+  /* Glass material is driven by two tunables so every blurred surface stays in
+     lockstep, and so the whole site can be re-tinted from a single override.
+     Defaults emulate the adaptive *Regular* Liquid Glass material (medium tint,
+     legible over any backdrop) rather than the *Clear* variant, which Apple
+     reserves for media and requires a dimming layer. NOTE: the OS Clear↔Tinted
+     slider (Display & Brightness) is NOT exposed to web content — only Settings ▸
+     Accessibility ▸ Reduce Transparency is, via prefers-reduced-transparency,
+     which the block far below honors by collapsing the glass to an opaque fill. */
+  --glass-blur: 24px;
+  --glass-sat: 180%;
+  /* Native tab-indicator spring (SwiftUI snappy: response 0.40, damping 0.78) as
+     a CSS linear() curve — a true damped spring with ~2% overshoot, the way the
+     Music / Instagram tab bars animate on iOS/iPadOS/macOS 26–27. Paired with a
+     cubic-bezier fallback wherever it's used, for engines without linear(). */
+  --spring: linear(0.0 0%, 0.0577 4.5%, 0.1889 9.1%, 0.3474 13.6%, 0.5043 18.2%, 0.6438 22.7%, 0.7591 27.3%, 0.8486 31.8%, 0.9144 36.4%, 0.9601 40.9%, 0.9897 45.5%, 1.0073 50%, 1.0164 54.5%, 1.0197 59.1%, 1.0195 63.6%, 1.0173 68.2%, 1.0143 72.7%, 1.0111 77.3%, 1.0081 81.8%, 1.0056 86.4%, 1.0037 90.9%, 1.0022 95.5%, 1.0 100%);
+  --glass-bg: rgba(22,22,26,0.42);
+  --glass-bg-lite: rgba(30,30,34,0.64);
   --glass-stroke: rgba(255,255,255,0.12);
   --glass-highlight: rgba(255,255,255,0.18);
   --glass-shadow: 0 12px 32px rgba(0,0,0,0.45);
@@ -31,8 +46,8 @@
     --bg: #fafafa; --fg: #1d1d1f; --muted: #6e6e73;
     --card: #ffffff; --border: rgba(0,0,0,0.08); color-scheme: light;
     --map-empty: #dcdce1; --map-stroke: rgba(0,0,0,0.18);
-    --glass-bg: rgba(255,255,255,0.55);
-    --glass-bg-lite: rgba(255,255,255,0.82);
+    --glass-bg: rgba(255,255,255,0.5);
+    --glass-bg-lite: rgba(255,255,255,0.78);
     --glass-stroke: rgba(0,0,0,0.08);
     --glass-highlight: rgba(255,255,255,0.85);
     --glass-shadow: 0 12px 32px rgba(0,0,0,0.1);
@@ -43,9 +58,15 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; color: var(--fg); }
-/* bg lives on html only: a bg on body would paint over the fixed z-index:-1 backdrop */
-html { background: var(--bg); }
-body { font-size: 17px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+/* bg lives on html only: a bg on body would paint over the fixed z-index:-1 backdrop.
+   overscroll-behavior-y: none kills the rubber-band bounce so a finger-drag past the
+   footer can't expose the strip below the fixed .backdrop — that reveal was the ugly
+   dark-mode "wallpaper cutoff" seam under the footer. */
+html { background: var(--bg); overscroll-behavior-y: none; }
+body { font-size: 17px; line-height: 1.55; -webkit-font-smoothing: antialiased; overscroll-behavior-y: none; }
+/* Interactive chrome handles its own press feedback; suppress the grey iOS tap flash
+   and the 300ms double-tap delay so taps register instantly (see .gn-* :active). */
+a, button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 main { max-width: var(--max); margin: 0 auto; padding: 5.5rem 1.5rem 6rem; }
 h1, h2, h3 { font-family: "SF Pro Display", -apple-system, sans-serif; letter-spacing: -0.02em; }
 h1 { font-size: 2.4rem; font-weight: 700; margin: 0 0 .5rem; }
@@ -89,23 +110,45 @@ code { background: var(--card); padding: .15rem .4rem; border-radius: 4px; font-
   padding: .4rem .5rem; border-radius: 999px;
   max-width: calc(100vw - 1.5rem); white-space: nowrap;
   background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
   border: 1px solid var(--glass-stroke);
   box-shadow: inset 0 1px 0 var(--glass-highlight), var(--glass-shadow);
+  transition: transform .18s cubic-bezier(.2,.7,.3,1), box-shadow .2s ease;
 }
+/* Native segmented-control "pill" that slides between tabs (Poolpat / Stats /
+   Discography) the way the Music and Instagram tab bars do. JS (Base.astro)
+   sets --ind-x/-w/-h to the active tab on load and to the hovered/pressed tab
+   on pointer; the springy cubic-bezier gives the slide its native overshoot.
+   No-JS / pre-hydration falls back to the static [aria-current] tint below. */
+.gn-indicator {
+  position: absolute; top: 50%; left: 0; z-index: 0; pointer-events: none;
+  height: var(--ind-h, 30px); width: var(--ind-w, 0);
+  transform: translate(var(--ind-x, 0), -50%);
+  border-radius: 999px; background: rgba(250,35,59,0.18);
+  box-shadow: inset 0 1px 0 var(--glass-highlight); opacity: 0;
+  transition: transform .525s cubic-bezier(.34,1.3,.5,1), width .525s cubic-bezier(.34,1.3,.5,1), opacity .25s ease;
+  transition: transform .525s var(--spring), width .525s var(--spring), opacity .25s ease;
+}
+.glass-nav.nav-ready .gn-indicator { opacity: 1; }
+.glass-nav.nav-ready .gn-link[aria-current="page"] { background: transparent; box-shadow: none; }
+.glass-nav:active { transform: translateX(-50%) scale(.985); }
+.gn-home, .gn-links, .gn-cta { position: relative; z-index: 1; }
 .gn-home {
   font-family: "SF Pro Display", -apple-system, sans-serif; font-weight: 700; font-size: 1rem;
   letter-spacing: -0.02em; color: var(--fg); padding: .35rem .8rem; text-decoration: none;
+  border-radius: 999px; transition: transform .15s ease, background-color .2s ease;
 }
 .gn-home:hover { text-decoration: none; }
+.gn-home:active { transform: scale(.93); background: var(--glass-bg-lite); }
 .gn-links { display: flex; gap: .15rem; }
 .gn-link {
   padding: .35rem .85rem; border-radius: 999px; color: var(--muted);
   font-size: .92rem; font-weight: 500; text-decoration: none;
-  transition: background-color .2s ease, color .2s ease;
+  transition: background-color .2s ease, color .2s ease, transform .15s ease;
 }
 .gn-link:hover { color: var(--fg); background: var(--glass-bg-lite); text-decoration: none; }
+.gn-link:active { color: var(--fg); background: var(--glass-bg-lite); transform: scale(.93); }
 .gn-link[aria-current="page"] {
   color: var(--fg); background: rgba(250,35,59,0.16);
   box-shadow: inset 0 1px 0 var(--glass-highlight);
@@ -169,21 +212,30 @@ code { background: var(--card); padding: .15rem .4rem; border-radius: 4px; font-
 .chart-badge { background: linear-gradient(135deg, #1a1a2e, #16213e) !important; border-color: var(--accent) !important; color: var(--accent) !important; font-weight: 700 !important; font-size: .78rem !important; }
 
 .releases { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+/* Square tile (Music / Instagram grid): the artwork fills a 1:1 card and the
+   caption is overlaid on a bottom scrim, instead of a portrait card made of a
+   square cover stacked above a separate text strip. */
 .release-card {
-  background: var(--glass-bg-lite); border: 1px solid var(--glass-stroke);
+  background: var(--card); border: 1px solid var(--glass-stroke);
   box-shadow: inset 0 1px 0 var(--glass-highlight);
-  border-radius: var(--radius); padding: 0; overflow: hidden; display: block;
-  color: var(--fg); text-decoration: none; position: relative;
+  border-radius: var(--radius); overflow: hidden; display: block;
+  color: var(--fg); text-decoration: none; position: relative; aspect-ratio: 1;
   transition: transform .15s ease, border-color .2s ease, box-shadow .2s ease;
 }
 .release-card:hover {
   transform: translateY(-3px); border-color: var(--accent); text-decoration: none;
   box-shadow: inset 0 1px 0 var(--glass-highlight), var(--glass-shadow);
 }
-.release-card .cover { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; border-bottom: 1px solid var(--border); background: var(--card); }
-.release-card .info { padding: .8rem 1rem 1rem; }
-.release-card .title { font-weight: 600; display: block; margin-bottom: .25rem; line-height: 1.3; font-size: .95rem; }
-.release-card .date { color: var(--muted); font-size: .8rem; }
+.release-card .cover {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: center; display: block; background: var(--card);
+}
+.release-card .info {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; padding: 1.7rem .85rem .75rem;
+  background: linear-gradient(to top, rgba(0,0,0,.82) 12%, rgba(0,0,0,.45) 55%, transparent);
+}
+.release-card .title { color: #fff; font-weight: 600; display: block; margin-bottom: .15rem; line-height: 1.25; font-size: .95rem; text-shadow: 0 1px 3px rgba(0,0,0,.55); }
+.release-card .date { color: rgba(255,255,255,.82); font-size: .8rem; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
 .release-card .badge { position: absolute; top: .6rem; right: .6rem; background: rgba(0,0,0,.7); color: #fff; font-size: .65rem; padding: .2rem .5rem; border-radius: 999px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); z-index: 1; }
 
 .hero { position: relative; margin-bottom: 2rem; }
@@ -195,8 +247,8 @@ code { background: var(--card); padding: .15rem .4rem; border-radius: 4px; font-
   display: flex; gap: .45rem; align-items: center;
   height: 38px; padding: 0 .85rem; border-radius: 999px; /* concentric with the 38px .nav-btn circles */
   background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
   border: 1px solid var(--glass-stroke);
   box-shadow: inset 0 1px 0 var(--glass-highlight);
 }
@@ -204,8 +256,8 @@ code { background: var(--card); padding: .15rem .4rem; border-radius: 4px; font-
 .dot.active { background: var(--accent); width: 24px; border-radius: 4px; }
 .nav-btn {
   background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
   border: 1px solid var(--glass-stroke); color: var(--fg);
   box-shadow: inset 0 1px 0 var(--glass-highlight);
   width: 38px; height: 38px; border-radius: 50%; cursor: pointer; font-size: 1rem;
@@ -221,8 +273,8 @@ code { background: var(--card); padding: .15rem .4rem; border-radius: 4px; font-
   position: relative; overflow: hidden; text-align: center;
   padding: 1.4rem 1.2rem 1.3rem; border-radius: var(--radius);
   background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
   border: 1px solid var(--glass-stroke);
   box-shadow: inset 0 1px 0 var(--glass-highlight), var(--glass-shadow-sm);
 }
@@ -246,8 +298,8 @@ code { background: var(--card); padding: .15rem .4rem; border-radius: 4px; font-
 .chart-container {
   border-radius: var(--radius); padding: 1.5rem; margin: 1.5rem 0;
   background: rgba(20,20,24,0.75);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
   border: 1px solid rgba(255,255,255,0.12);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), var(--glass-shadow-sm);
 }
@@ -257,8 +309,8 @@ code { background: var(--card); padding: .15rem .4rem; border-radius: 4px; font-
 .listener-map {
   margin: 1.5rem 0 0; padding: 1.15rem 1.15rem 1rem; border-radius: var(--radius);
   background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
   border: 1px solid var(--glass-stroke);
   box-shadow: inset 0 1px 0 var(--glass-highlight), var(--glass-shadow-sm);
 }
@@ -426,5 +478,6 @@ html { scroll-padding-top: 5rem; }
   .release-card { transition: none; }
   .listen-cta { transition: none; }
   .dot { transition: none; }
-  .nav-btn, .gn-cta, .gn-link, .social-icon, .nav-link { transition: none; }
+  .nav-btn, .gn-cta, .gn-link, .gn-home, .glass-nav, .social-icon, .nav-link { transition: none; }
+  .gn-indicator { transition: opacity .25s ease; }
 }
