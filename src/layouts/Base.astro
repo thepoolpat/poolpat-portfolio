@@ -83,5 +83,25 @@ const navAmHref = link({
     <a href="https://soundcloud.com/poolpat" target="_blank" rel="noopener">SoundCloud</a> &middot;
     <a href="https://open.spotify.com/artist/4rr3o9anpUXitNXo0W4uX7" target="_blank" rel="noopener">Spotify</a>
   </footer>
+  <script>
+    // Liquid Glass "lens": a specular highlight on the nav pill that tracks the
+    // pointer / touch point so the pill reacts dynamically to touch (and hover).
+    // Skipped entirely for reduced-motion users — the CSS keeps the static glass.
+    const nav = document.querySelector<HTMLElement>(".glass-nav");
+    if (nav && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const track = (x: number, y: number) => {
+        const r = nav.getBoundingClientRect();
+        nav.style.setProperty("--px", `${x - r.left}px`);
+        nav.style.setProperty("--py", `${y - r.top}px`);
+      };
+      const clear = () => nav.classList.remove("is-touched");
+      nav.addEventListener("pointermove", (e) => track(e.clientX, e.clientY));
+      nav.addEventListener("pointerdown", (e) => { track(e.clientX, e.clientY); nav.classList.add("is-touched"); });
+      nav.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") nav.classList.add("is-touched"); });
+      nav.addEventListener("pointerup", clear);
+      nav.addEventListener("pointercancel", clear);
+      nav.addEventListener("pointerleave", clear);
+    }
+  </script>
 </body>
 </html>
