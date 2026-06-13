@@ -59,11 +59,11 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; color: var(--fg); }
 /* bg lives on html only: a bg on body would paint over the fixed z-index:-1 backdrop.
-   overscroll-behavior-y: none kills the rubber-band bounce so a finger-drag past the
-   footer can't expose the strip below the fixed .backdrop — that reveal was the ugly
-   dark-mode "wallpaper cutoff" seam under the footer. */
-html { background: var(--bg); overscroll-behavior-y: none; }
-body { font-size: 17px; line-height: 1.55; -webkit-font-smoothing: antialiased; overscroll-behavior-y: none; }
+   The native scroll rebound is kept — instead of suppressing it, the .backdrop fades
+   to var(--bg) at its top/bottom edges (mask, below), so the rebound reveals that same
+   base color as a smooth continuation rather than a hard wallpaper cutoff. */
+html { background: var(--bg); }
+body { font-size: 17px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
 /* Interactive chrome handles its own press feedback; suppress the grey iOS tap flash
    and the 300ms double-tap delay so taps register instantly (see .gn-* :active). */
 a, button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
@@ -84,8 +84,19 @@ code { background: var(--card); padding: .15rem .4rem; border-radius: 4px; font-
 }
 .skip-link:focus { left: 0; }
 
-/* Ambient layer — fixed smoke behind everything; glass chrome floats above it */
-.backdrop { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+/* Ambient layer — fixed smoke behind everything; glass chrome floats above it.
+   The container carries a "floor" glow rising from the bottom edge so the lower
+   third of the viewport isn't dead black — the corner blobs alone left the
+   wallpaper looking like it stopped ~2/3 down the screen. */
+.backdrop {
+  position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+  background: radial-gradient(115% 72% at 50% 104%, rgba(108,92,232,0.17), transparent 66%);
+  /* Fade the whole wallpaper (floor glow + blobs + grain) to var(--bg) at the very
+     top and bottom edges so the native scroll rebound continues that base color as a
+     soft gradient instead of slamming into a hard pitch-black / white cutoff. */
+  -webkit-mask: linear-gradient(to bottom, transparent 0, #000 6%, #000 94%, transparent 100%);
+  mask: linear-gradient(to bottom, transparent 0, #000 6%, #000 94%, transparent 100%);
+}
 .backdrop i { position: absolute; display: block; width: 65vmax; height: 65vmax; border-radius: 50%; }
 .backdrop i:nth-child(1) { top: -25vmax; left: -20vmax; background: radial-gradient(circle, rgba(255,85,0,0.16), transparent 62%); }
 .backdrop i:nth-child(2) { top: 12%; right: -28vmax; background: radial-gradient(circle, rgba(250,35,59,0.13), transparent 62%); }
@@ -95,6 +106,7 @@ code { background: var(--card); padding: .15rem .4rem; border-radius: 4px; font-
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E") repeat;
 }
 @media (prefers-color-scheme: light) {
+  .backdrop { background: radial-gradient(115% 72% at 50% 104%, rgba(108,92,232,0.1), transparent 66%); }
   .backdrop i:nth-child(1) { background: radial-gradient(circle, rgba(255,85,0,0.1), transparent 62%); }
   .backdrop i:nth-child(2) { background: radial-gradient(circle, rgba(250,35,59,0.08), transparent 62%); }
   .backdrop i:nth-child(3) { background: radial-gradient(circle, rgba(94,92,230,0.1), transparent 62%); }

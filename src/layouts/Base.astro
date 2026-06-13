@@ -103,16 +103,27 @@ const navAmHref = link({
         ind.style.setProperty("--ind-h", `${r.height}px`);
       };
       const settle = () => moveTo(active);
+      const tabAtX = (x: number) => tabs.find((t) => {
+        const r = t.getBoundingClientRect();
+        return x >= r.left && x <= r.right;
+      });
       // Position under the active tab after first layout, then reveal (no slide-in flash).
       requestAnimationFrame(() => { settle(); nav.classList.add("nav-ready"); });
       window.addEventListener("load", settle);
       window.addEventListener("resize", settle);
       if (!reduce) {
-        tabs.forEach((t) => {
-          t.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") moveTo(t); });
-          t.addEventListener("pointerdown", () => moveTo(t));
+        let pressing = false;
+        // Press-and-drag: the pill follows the finger/cursor across the tabs (and
+        // mouse hover follows too), then settles where it's released — like the
+        // draggable thumb on a native iOS segmented control.
+        nav.addEventListener("pointerdown", (e) => { pressing = true; moveTo(tabAtX(e.clientX)); });
+        nav.addEventListener("pointermove", (e) => {
+          if (pressing || e.pointerType === "mouse") moveTo(tabAtX(e.clientX));
         });
-        nav.addEventListener("pointerleave", settle);
+        const release = (e: PointerEvent) => { pressing = false; moveTo(tabAtX(e.clientX) ?? active); };
+        nav.addEventListener("pointerup", release);
+        nav.addEventListener("pointercancel", () => { pressing = false; settle(); });
+        nav.addEventListener("pointerleave", () => { pressing = false; settle(); });
       }
     }
   </script>
