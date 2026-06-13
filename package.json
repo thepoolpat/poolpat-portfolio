@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Unified artist portfolio \u2014 play stats, discography, liner notes. Astro + MusicKit + affiliate attribution.",
+  "description": "Unified artist portfolio \u2014 play stats, discography, liner notes. Astro + Apple Music affiliate attribution.",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",

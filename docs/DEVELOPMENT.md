@@ -35,7 +35,7 @@ For the public-facing artist page, see the root [README.md](../README.md) and th
 │    ├── spotify_client.py        # Spotify API client (typed, with retry)
 │    ├── spotify_errors.py        # Typed error hierarchy
 │    ├── requirements.txt
-│    └── tests/                   # 118 unit tests
+│    └── tests/                   # 140+ unit tests (7 modules)
 ├── dev/                         # Dev-only tooling (not in CI, except gen_world_geo.mjs)
 │    ├── gen_world_geo.mjs       # Load-bearing geo generator for the listener map
 │    ├── examples/               # Experimental Spotify demos (not in CI)
@@ -49,6 +49,9 @@ For the public-facing artist page, see the root [README.md](../README.md) and th
 ├── public/artwork/              # Release cover images (1200px, web-optimized)
 └── src/
      ├── data/releases.json       # Hand-maintained release catalog (7 releases)
+     ├── lib/                      # Shared TS helpers
+     │    ├── geo.ts               # Listener-map geo merge (SoundCloud + Apple Music)
+     │    └── geo.test.ts          # Vitest coverage for geo.ts (13 tests)
      ├── layouts/Base.astro       # HTML shell, SEO, a11y
      ├── components/              # Astro components
      ├── pages/                   # Route pages
@@ -129,8 +132,13 @@ The Python fetcher runs weekly (`fetch-data.yml`, cron `0 6 * * 0` — Sundays
 | `SPOTIFY_CLIENT_ID` | Spotify API access |
 | `SPOTIFY_CLIENT_SECRET` | Spotify API access |
 | `SPOTIFY_REFRESH_TOKEN` | User-scoped Spotify data (PKCE) |
-| `CAMOUXF_HOME` | Camoufox cache directory (local-first mode) |
+| `RAPIDAPI_KEY` | Playlist enrichment in `fetch_playlists.py` (skipped if unset) |
+| `CAMPAIGN_HASH_SALT` | **Required for public/Pages builds** — affiliate-helper hashes campaign tokens at build time and throws without it (supplied by `deploy.yml`) |
 | `APPLE_MUSIC_TOKEN` | Apple Music API access (optional — requires paid Developer Program) |
+
+> **Dev-only:** `CAMOUFOX_HOME` (Camoufox cache directory) is used only by the
+> local/experimental Spotify logging path — it is **not** a CI secret. See the
+> Camoufox note above.
 
 ### Platform Notes
 

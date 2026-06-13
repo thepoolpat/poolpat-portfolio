@@ -109,7 +109,7 @@ const artistJsonLd = {
       {releases.map((r, i) => (
         <div class={`hero-slide${i === 0 ? " active" : ""}`} data-idx={i} inert={i !== 0}>
           <div class="artwork">
-            <img src={art(r)} alt={`${r.title} cover artwork`} width="1200" height="1200" loading={i === 0 ? "eager" : "lazy"} decoding="async" />
+            <img src={i === 0 ? art(r) : undefined} data-src={i === 0 ? undefined : art(r)} alt={`${r.title} cover artwork`} width="1200" height="1200" loading={i === 0 ? "eager" : "lazy"} fetchpriority={i === 0 ? "high" : undefined} decoding="async" />
           </div>
           <h1>{r.title}</h1>
           <p class="tagline">{r.tagline}</p>
@@ -199,8 +199,15 @@ const artistJsonLd = {
     let timer: ReturnType<typeof setInterval> | null = null;
     let paused = false;
 
+    function loadSlideImg(i: number) {
+      const img = slides[(i + slides.length) % slides.length]?.querySelector("img");
+      if (img && img.dataset.src) { img.src = img.dataset.src; delete img.dataset.src; }
+    }
+
     function showSlide(i: number) {
       current = (i + slides.length) % slides.length;
+      loadSlideImg(current);
+      loadSlideImg(current + 1);
       slides.forEach((s, idx) => {
         s.classList.toggle("active", idx === current);
         s.toggleAttribute("inert", idx !== current);
@@ -234,6 +241,11 @@ const artistJsonLd = {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     hero.addEventListener("mouseenter", () => { paused = true; showSlide(current); restartTimer(); });
     hero.addEventListener("mouseleave", () => { paused = reducedMotion; showSlide(current); restartTimer(); });
+    hero.addEventListener("focusin", () => { paused = true; showSlide(current); restartTimer(); });
+    hero.addEventListener("focusout", () => { paused = reducedMotion; showSlide(current); restartTimer(); });
+
+    loadSlideImg(0);
+    loadSlideImg(1);
 
     if (reducedMotion) {
       paused = true;

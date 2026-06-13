@@ -404,6 +404,63 @@ class TestAppendHistoryCsv(unittest.TestCase):
         spotify_col = rows[-1][3]  # 4th column = spotify total
         self.assertGreaterEqual(int(spotify_col), 42)
 
+    def test_float_prev_total_does_not_crash_next_run(self):
+        """A hand-edited float total (e.g. 4108.0) must not crash int() on the
+        NEXT run's read-back, and the written column must parse as an int."""
+        first = {
+            "last_updated": "2026-01-01T00:00:00Z",
+            "soundcloud": {"total_plays": 0, "tracks": {}},
+            "spotify": {"total_streams": 4108.0, "tracks": {}},  # float, as hand-edited
+            "apple_music": {"total_plays": 0, "tracks": {}},
+        }
+        second = {
+            "last_updated": "2026-01-02T00:00:00Z",
+            "soundcloud": {"total_plays": 0, "tracks": {}},
+            "spotify": {"total_streams": 4200, "tracks": {}},  # normal int data
+            "apple_music": {"total_plays": 0, "tracks": {}},
+        }
+        fetch_plays.append_history_csv(first)
+        # The second call reads the first row back; it must not raise ValueError.
+        fetch_plays.append_history_csv(second)
+
+        rows = self._read_rows()
+        # The written value parses cleanly as an int (no stray ".0").
+        self.assertEqual(int(rows[-1]["spotify_total_streams"]), 4200)
+
+    def test_track_count_does_not_dip_on_failed_fetch(self):
+        """A transient failure yields an empty tracks dict; the *_track_count
+        column must clamp to the prior value rather than dipping to 0."""
+        first = {
+            "last_updated": "2026-01-01T00:00:00Z",
+            "soundcloud": {
+                "total_plays": 5000,
+                "tracks": {"a": 1, "b": 1, "c": 1, "d": 1, "e": 1},  # 5 tracks
+            },
+            "spotify": {"total_streams": 0, "tracks": {}},
+            "apple_music": {"total_plays": 0, "tracks": {}},
+        }
+        second = {
+            "last_updated": "2026-01-02T00:00:00Z",
+            "soundcloud": {
+                "total_plays": 5000,  # same/higher total
+                "tracks": {},  # transient failure — empty
+                "fetch_status": "failed",
+            },
+            "spotify": {"total_streams": 0, "tracks": {}},
+            "apple_music": {"total_plays": 0, "tracks": {}},
+        }
+        fetch_plays.append_history_csv(first)
+        fetch_plays.append_history_csv(second)
+
+        rows = self._read_rows()
+        self.assertEqual(int(rows[0]["soundcloud_track_count"]), 5)
+        # The clamp holds: count did not drop below the first row.
+        self.assertGreaterEqual(
+            int(rows[1]["soundcloud_track_count"]),
+            int(rows[0]["soundcloud_track_count"]),
+        )
+        self.assertEqual(int(rows[1]["soundcloud_track_count"]), 5)
+
 
 # ─── Alert issue creation ────────────────────────────────────────────────────
 
