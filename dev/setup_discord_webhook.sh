@@ -14,8 +14,9 @@ echo "4. Paste webhook URL below"
 echo ""
 read -p "Enter webhook URL: " WEBHOOK_URL
 
-# Update .env.discord
-cd ~/poolpat-portfolio
+# Update .env.discord (repo root, derived from this script's location)
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO"
 
 rm -f .env.discord
 cat > .env.discord << EOF
@@ -30,7 +31,7 @@ echo ""
 echo "=========================================="
 echo "✅ Webhook configured!"
 echo "=========================================="
-echo "File: ~/poolpat-portfolio/.env.discord"
+echo "File: $REPO/.env.discord"
 echo "Webhook: ${WEBHOOK_URL}"
 echo ""
 echo "The batch logger will now send notifications to Discord when tracks change"

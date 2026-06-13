@@ -4,14 +4,14 @@
 
 ### 1. Enable Discord Logging
 ```bash
-cd ~/poolpat-portfolio
+cd ~/Documents/GitHub/poolpat-portfolio
 ./setup_discord.sh
 # Enter your Discord webhook URL when prompted
 ```
 
 ### 2. Start the Analytics System
 ```bash
-cd ~/poolpat-portfolio/pipeline
+cd ~/Documents/GitHub/poolpat-portfolio/pipeline
 python3 spotify_discord_analytics.py
 
 # Press Enter to start logging
@@ -44,7 +44,7 @@ hermes chat spotify -m "show my top tracks this week"
 - Volume level logging
 
 ### 💾 Analytics Database
-Location: `~/poolpat-portfolio/spotify_logs/analytics.db`
+Location: `~/Documents/GitHub/poolpat-portfolio/dev/spotify_logs/analytics.db`
 
 **Tables:**
 - `playback_history` - All playback events
@@ -171,7 +171,7 @@ DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 
 ### Example 1: Continuous Logging
 ```bash
-cd ~/poolpat-portfolio/pipeline
+cd ~/Documents/GitHub/poolpat-portfolio/pipeline
 python3 spotify_discord_analytics.py
 # Runs continuously, logging every track change
 # Press 'q' to stop and see stats
@@ -179,7 +179,7 @@ python3 spotify_discord_analytics.py
 
 ### Example 2: One-time Stats
 ```bash
-cd ~/poolpat-portfolio
+cd ~/Documents/GitHub/poolpat-portfolio
 python3 -c "
 from pipeline.spotify_discord_analytics import SpotifyDiscordAnalytics
 a = SpotifyDiscordAnalytics()
@@ -201,11 +201,11 @@ Send to webhook:
 ### Example 4: Export Analytics
 ```bash
 # Export to CSV
-sqlite3 ~/poolpat-portfolio/spotify_logs/analytics.db \
+sqlite3 ~/Documents/GitHub/poolpat-portfolio/dev/spotify_logs/analytics.db \
     ".mode csv" ".select * from playback_history;" > playlist_export.csv
 
 # Generate top 100
-sqlite3 ~/poolpat-portfolio/spotify_logs/analytics.db \
+sqlite3 ~/Documents/GitHub/poolpat-portfolio/dev/spotify_logs/analytics.db \
     "SELECT track_name, artist_name, COUNT(*) as plays \
      FROM playback_history \
      GROUP BY track_name \

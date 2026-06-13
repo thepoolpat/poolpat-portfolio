@@ -54,6 +54,23 @@ class TestUnicodeNormalizedMerge(unittest.TestCase):
         merged = monotonic_merge_tracks({NFD_TITLE: None, NFC_TITLE: 70}, {})
         self.assertEqual(merged, {NFC_TITLE: 70})
 
+    def test_apostrophe_variants_collapse_to_straight(self):
+        # curly U+2019 vs straight U+0027 — the "Otaku's Doodle" production dup
+        merged = monotonic_merge_tracks({"Otaku's Doodle": 372, "Otaku’s Doodle": 372}, {})
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(list(merged.values()), [372])
+        self.assertIn("Otaku's Doodle", merged)  # straight apostrophe is canonical
+
+    def test_case_variants_collapse_keeping_max_and_its_casing(self):
+        # the Spotify "Damsels In Distress" casing dup — keep the higher count + its title
+        merged = monotonic_merge_tracks(
+            {"Damsels In Distress - Instrumental": 642, "damsels in distress - instrumental": 43}, {})
+        self.assertEqual(merged, {"Damsels In Distress - Instrumental": 642})
+
+    def test_case_variant_in_fetch_does_not_fork_row(self):
+        merged = monotonic_merge_tracks({"Track Name": 100}, {"track name": 150})
+        self.assertEqual(merged, {"Track Name": 150})  # higher count, original display casing
+
 
 class TestMonotonicMergeTracks(unittest.TestCase):
     def test_fetched_higher_than_existing_wins(self):

@@ -45,40 +45,47 @@ ALERT_THRESHOLD = 3  # consecutive failures before creating a GitHub Issue
 
 # ─── Monotonic helpers ───────────────────────────────────────────────────────
 
-def _nfc_tracks(tracks: dict) -> dict:
-    """Collapse Unicode-equivalent track titles onto their NFC form.
+def _canon_display(title: str) -> str:
+    """Display-safe title normalization: NFC composition + straight apostrophes.
+    Letter case is preserved (we never lowercase a displayed title)."""
+    s = unicodedata.normalize("NFC", title)
+    for q in ("’", "‘", "ʼ"):  # curly / modifier apostrophes -> ASCII '
+        s = s.replace(q, "'")
+    return s
 
-    The Insights export and the public-page scrape disagree on normalization
-    for accented titles (NFC vs NFD), which created permanent duplicate rows
-    ("Déjà 30 Piges" twice) that the monotonic merge then preserved forever.
-    When two forms collide, keep the MAX so the invariant survives the collapse;
-    non-colliding entries pass through with their value untouched."""
-    out: dict = {}
-    for title, plays in tracks.items():
-        key = unicodedata.normalize("NFC", title)
-        if key in out:
-            a = out[key] if isinstance(out[key], (int, float)) else 0
-            b = plays if isinstance(plays, (int, float)) else 0
-            out[key] = max(a, b)
-        else:
-            out[key] = plays
-    return out
+
+def _canon_key(title: str) -> str:
+    """Comparison key folding the three display-equivalent variations that have
+    produced phantom duplicate track rows: NFC/NFD composition, curly vs straight
+    apostrophes, and ASCII letter case (plus edge whitespace, matching the old
+    RSS fuzzy match)."""
+    return _canon_display(title).casefold().strip()
+
+
+def _num(v) -> float:
+    return v if isinstance(v, (int, float)) else 0
 
 
 def monotonic_merge_tracks(existing: dict, fetched: dict) -> dict:
-    """Merge track dicts: keep the MAX of existing vs fetched per track.
-    Never allow a track's play count to decrease.
-    New tracks from fetched are added. Existing tracks not in fetched are kept.
-    Titles are compared in NFC form so NFC/NFD variants of the same track merge."""
-    merged = _nfc_tracks(existing)  # all existing tracks, dedup'd by NFC title
-    for title, plays in _nfc_tracks(fetched).items():
+    """Merge track dicts keeping the MAX play count per track; counts never decrease.
+    New tracks from fetched are added; existing tracks absent from fetched are kept.
+    Titles are compared via _canon_key so NFC/NFD, curly/straight-apostrophe, and
+    letter-case variants of one track collapse to a single row — the highest-count
+    variant supplies the display title (normalized to NFC + straight apostrophes)."""
+    merged: dict = {}  # canon_key -> [display_title, plays]
+    for title, plays in existing.items():
+        k = _canon_key(title)
+        if k not in merged or _num(plays) > _num(merged[k][1]):
+            merged[k] = [_canon_display(title), plays]
+    for title, plays in fetched.items():
         if not isinstance(plays, (int, float)) or plays <= 0:
             continue  # skip zero/null fetched values — keep existing
-        old = merged.get(title, 0)
-        if not isinstance(old, (int, float)):
-            old = 0  # hand-edited plays.json may contain strings/nulls
-        merged[title] = max(old, plays)
-    return merged
+        k = _canon_key(title)
+        if k not in merged:
+            merged[k] = [_canon_display(title), plays]
+        elif plays >= _num(merged[k][1]):
+            merged[k][1] = plays  # monotonic increase; keep the established display title
+    return {t: p for t, p in merged.values()}
 
 
 def monotonic_total(existing_total: int, computed_total: int) -> int:
@@ -225,16 +232,15 @@ def fetch_soundcloud_all(existing_sc: dict) -> tuple[dict, list[dict], bool]:
         # Merge API data with existing, keeping the MAX per track (monotonic)
         merged = monotonic_merge_tracks(existing_tracks, api_plays)
 
-        # Also add any RSS-only titles not in API or existing (new releases).
-        # NFC-normalize first: merged keys are all NFC after monotonic_merge_tracks,
-        # so a raw NFD title from the feed would re-create a duplicate row here.
+        # Add any RSS-only titles not already present. Compare via _canon_key so an
+        # NFD / curly-apostrophe / differently-cased feed title can't re-create a
+        # duplicate row (the bug this dedup exists to kill).
+        canon_seen = {_canon_key(k) for k in merged}
         for rt in rss_tracks:
-            title = unicodedata.normalize("NFC", rt["title"])
-            if title not in merged:
-                # Check fuzzy match
-                fuzzy = next((k for k in merged if k.lower().strip() == title.lower().strip()), None)
-                if not fuzzy:
-                    merged[title] = 0  # new track, no plays yet
+            title = _canon_display(rt["title"])
+            if _canon_key(title) not in canon_seen:
+                merged[title] = 0  # new track, no plays yet
+                canon_seen.add(_canon_key(title))
 
         new_total = sum(v for v in merged.values() if isinstance(v, (int, float)))
         final_total = monotonic_total(existing_total, new_total)
@@ -668,17 +674,33 @@ def append_history_csv(data: dict) -> None:
     file_exists = HISTORY_CSV.exists()
 
     last = get_last_history_row()
-    prev_sc = int(last.get("soundcloud_total_plays", 0) or 0)
-    prev_sp = int(last.get("spotify_total_streams", last.get("spotify_total_popularity", 0)) or 0)
-    prev_am = int(last.get("apple_music_total_plays", 0) or 0)
+    # Tolerant read-back: a hand-edited float like "4108.0" must not crash int()
+    # on the NEXT run (it previously aborted append_history_csv and main).
+    def _prev_int(*keys):
+        for k in keys:
+            if k in last:
+                return int(float(last.get(k) or 0))
+        return 0
+    prev_sc = _prev_int("soundcloud_total_plays")
+    prev_sp = _prev_int("spotify_total_streams", "spotify_total_popularity")
+    prev_am = _prev_int("apple_music_total_plays")
+    prev_sc_tc = _prev_int("soundcloud_track_count")
+    prev_sp_tc = _prev_int("spotify_track_count")
+    prev_am_tc = _prev_int("apple_music_track_count")
 
     sc = data.get("soundcloud", {})
     sp = data.get("spotify", {})
     am = data.get("apple_music", {})
 
-    sc_total = max(prev_sc, sc.get("total_plays", 0) or 0)
-    sp_total = max(prev_sp, sp.get("total_streams", 0) or 0)
-    am_total = max(prev_am, am.get("total_plays", 0) or 0)
+    # Totals are written as ints so the column type stays stable across runs.
+    sc_total = max(prev_sc, int(round(sc.get("total_plays", 0) or 0)))
+    sp_total = max(prev_sp, int(round(sp.get("total_streams", 0) or 0)))
+    am_total = max(prev_am, int(round(am.get("total_plays", 0) or 0)))
+    # track_count columns are monotonic too: a failed fetch yields an empty tracks
+    # dict; clamping to the prior value prevents a one-row dip to 0 in history.
+    sc_tc = max(prev_sc_tc, len(sc.get("tracks", {})))
+    sp_tc = max(prev_sp_tc, len(sp.get("tracks", {})))
+    am_tc = max(prev_am_tc, len(am.get("tracks", {})))
 
     fieldnames = [
         "timestamp", "soundcloud_total_plays", "soundcloud_track_count",
@@ -693,11 +715,11 @@ def append_history_csv(data: dict) -> None:
         writer.writerow({
             "timestamp": data.get("last_updated", datetime.now(timezone.utc).isoformat()),
             "soundcloud_total_plays": sc_total,
-            "soundcloud_track_count": len(sc.get("tracks", {})),
+            "soundcloud_track_count": sc_tc,
             "spotify_total_streams": sp_total,
-            "spotify_track_count": len(sp.get("tracks", {})),
+            "spotify_track_count": sp_tc,
             "apple_music_total_plays": am_total,
-            "apple_music_track_count": len(am.get("tracks", {})),
+            "apple_music_track_count": am_tc,
         })
     print(f"History: SC={sc_total:,} SP={sp_total:,} AM={am_total:,}")
 

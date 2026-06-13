@@ -19,9 +19,9 @@ auto-committed by the weekly `fetch-data.yml` workflow.
   - `spotify_client.py` — typed API client with retry + auto-refresh
   - `spotify_auth.py` — PKCE OAuth flow + refresh-token rotation handling
   - `spotify_errors.py` — typed exception hierarchy
-  - `tests/` — pytest suite (118 tests across 7 modules)
+  - `tests/` — pytest suite (140+ Python tests across 7 modules)
 - `packages/affiliate-helper/js/` — Apple Music affiliate link builder
-  - `tests/` — Vitest suite (52 tests)
+  - `tests/` — Vitest suite (52 JS: 39 affiliate-helper + 13 geo)
 - `.github/workflows/` — `deploy.yml` (Pages), `fetch-data.yml` (weekly cron),
   `codeql.yml`, `tests.yml` (pytest + vitest on push/PR).
 
@@ -47,7 +47,7 @@ zero values, partial responses, and new tracks in the fetched set.
 
 ## Test status
 
-118 Python + 52 JS passing. Coverage now includes:
+140+ Python + 52 JS passing. Coverage now includes:
 - `fetch_plays` — monotonic helpers + SoundCloud / Spotify / Apple Music
   fetch orchestration, history.csv writer, GitHub alert path, RSS parsing
 - `fetch_playlists` — client_credentials auth, retry, dedup, search nullability
@@ -56,11 +56,13 @@ zero values, partial responses, and new tracks in the fetched set.
   `::add-mask::`, `$GITHUB_ENV` write, and `gh secret set` failure modes
 - `affiliate-helper.js` — `link()`, `rewrite()`, `parseCt()`, byte-exact URL
   conformance with the Swift / Python sibling builders
+- `src/lib/geo.ts` (`geo.test.ts`) — listener-map geo merge (SoundCloud +
+  Apple Music location aggregation, flag/country list building)
 
 ## Known test gaps
 
-- `spotify_discord_analytics.py`, `spotify_enhanced_analytics.py` — analytics
-  modules not currently in any workflow, lower priority.
+- `spotify_discord_analytics.py` — analytics module not currently in any
+  workflow, lower priority.
 - `_run_local_auth` (interactive HTTP server callback) — local-dev only.
 
 ## Conventions
