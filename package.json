@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Unified artist portfolio — play stats, discography, liner notes. Astro + MusicKit + affiliate attribution.",
+  "description": "Unified artist portfolio \u2014 play stats, discography, liner notes. Astro + MusicKit + affiliate attribution.",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
@@ -29,7 +29,8 @@
     "typescript": "^6.0.3"
   },
   "overrides": {
-    "yaml": "2.8.3"
+    "yaml": "2.8.3",
+    "esbuild": "0.28.1"
   },
   "devDependencies": {
     "vitest": "^4.1.8"
