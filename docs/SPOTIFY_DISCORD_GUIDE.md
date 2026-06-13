@@ -5,7 +5,7 @@
 ### 1. Enable Discord Logging
 ```bash
 cd ~/Documents/GitHub/poolpat-portfolio
-./setup_discord.sh
+./dev/setup_discord_webhook.sh
 # Enter your Discord webhook URL when prompted
 ```
 
@@ -225,7 +225,7 @@ sqlite3 ~/Documents/GitHub/poolpat-portfolio/dev/spotify_logs/analytics.db \
 
 ## Next Steps
 
-1. **Configure Discord webhook** via `./setup_discord.sh`
+1. **Configure Discord webhook** via `./dev/setup_discord_webhook.sh`
 2. **Run analytics** via `python3 spotify_discord_analytics.py`
 3. **Test remote control** via Discord commands
 4. **Export data** for analysis/visualization

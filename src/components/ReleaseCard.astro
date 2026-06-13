@@ -15,7 +15,7 @@ const cover = `${base}${r.artwork}`;
   {r.charts && r.charts.length > 0 && (
     <span class="badge" style="left:.6rem;right:auto;background:rgba(250,35,59,.85)">Charted</span>
   )}
-  <div class="cover" style={`background-image:url('${cover}')`}></div>
+  <img class="cover" src={cover} alt="" width="600" height="600" loading="lazy" decoding="async" />
   <div class="info">
     <span class="title">{r.title}</span>
     <span class="date">{showReleaseDate ? `${r.releaseDate} · ${r.typeLabel}` : r.typeLabel}</span>

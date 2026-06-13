@@ -8,11 +8,14 @@ WEBHOOK_URL=$(grep DISCORD_WEBHOOK_URL "$REPO/.env.discord" | cut -d'=' -f2)
 
 echo "Sending test message to Discord webhook..."
 
+payload=$(cat <<EOF
+{"content": "🎵 **Spotify Logging Test**\n\nYour Discord webhook is configured! 🎉\n\nTimestamp: $(date)"}
+EOF
+)
+
 curl -X POST "$WEBHOOK_URL" \
    -H "Content-Type: application/json" \
-   -d '{
-     "content": "🎵 **Spotify Logging Test**\n\nYour Discord webhook is configured! 🎉\n\nTimestamp: '$(date)"
-   }'
+   -d "$payload"
 
 echo ""
 echo "✅ Test message sent!"

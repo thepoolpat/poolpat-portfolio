@@ -24,7 +24,9 @@ const ogImageUrl = artUrl.replace(/\.webp$/, ".jpg");
 // Whitelist exact bare tags only — matching on tag *name* alone would let
 // attributes through (e.g. `<strong onmouseover=…>`), defeating the point
 // of sanitizing before set:html.
-const safeCredits = r.credits?.replace(/<(?!\/?(?:strong|em)>|br\s*\/?>)[^>]*>/gi, "") ?? "";
+const safeCredits = (r.credits ?? "")
+  .replace(/<(?!\/?(?:strong|em)>|br\s*\/?>)[^>]*>/gi, "")   // strip complete non-whitelisted tags
+  .replace(/<(?!\/?(?:strong|em)>|br\s*\/?>)/gi, "&lt;");    // escape stray '<' (unterminated tag)
 
 function toIsoDuration(d?: string): string | undefined {
   if (!d) return undefined;
