@@ -45,3 +45,6 @@ dev/spotify_logs/*.csv
 
 # Local scratch scripts (one-shot debugging, not part of the pipeline)
 scratch/
+
+# editor / manual backups
+*.bak
