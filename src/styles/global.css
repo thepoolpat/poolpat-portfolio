@@ -25,6 +25,11 @@
      which the block far below honors by collapsing the glass to an opaque fill. */
   --glass-blur: 24px;
   --glass-sat: 180%;
+  /* Native tab-indicator spring (SwiftUI snappy: response 0.40, damping 0.78) as
+     a CSS linear() curve — a true damped spring with ~2% overshoot, the way the
+     Music / Instagram tab bars animate on iOS/iPadOS/macOS 26–27. Paired with a
+     cubic-bezier fallback wherever it's used, for engines without linear(). */
+  --spring: linear(0.0 0%, 0.0577 4.5%, 0.1889 9.1%, 0.3474 13.6%, 0.5043 18.2%, 0.6438 22.7%, 0.7591 27.3%, 0.8486 31.8%, 0.9144 36.4%, 0.9601 40.9%, 0.9897 45.5%, 1.0073 50%, 1.0164 54.5%, 1.0197 59.1%, 1.0195 63.6%, 1.0173 68.2%, 1.0143 72.7%, 1.0111 77.3%, 1.0081 81.8%, 1.0056 86.4%, 1.0037 90.9%, 1.0022 95.5%, 1.0 100%);
   --glass-bg: rgba(22,22,26,0.42);
   --glass-bg-lite: rgba(30,30,34,0.64);
   --glass-stroke: rgba(255,255,255,0.12);
@@ -122,7 +127,8 @@ code { background: var(--card); padding: .15rem .4rem; border-radius: 4px; font-
   transform: translate(var(--ind-x, 0), -50%);
   border-radius: 999px; background: rgba(250,35,59,0.18);
   box-shadow: inset 0 1px 0 var(--glass-highlight); opacity: 0;
-  transition: transform .42s cubic-bezier(.34,1.32,.46,1), width .42s cubic-bezier(.34,1.32,.46,1), opacity .25s ease;
+  transition: transform .525s cubic-bezier(.34,1.3,.5,1), width .525s cubic-bezier(.34,1.3,.5,1), opacity .25s ease;
+  transition: transform .525s var(--spring), width .525s var(--spring), opacity .25s ease;
 }
 .glass-nav.nav-ready .gn-indicator { opacity: 1; }
 .glass-nav.nav-ready .gn-link[aria-current="page"] { background: transparent; box-shadow: none; }
