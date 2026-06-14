@@ -94,33 +94,60 @@ const navAmHref = link({
       const tabs = Array.from(nav.querySelectorAll<HTMLElement>(".gn-home, .gn-link"));
       const active = tabs.find((t) => t.getAttribute("aria-current") === "page") ?? tabs[0];
       const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      const moveTo = (el?: HTMLElement) => {
+      // animate=false jumps instantly (transition suppressed + reflushed) so the
+      // pill never springs in from the corner on load and stays glued to the
+      // finger mid-drag; animate=true lets the CSS spring play (tap / hover / snap).
+      const place = (el?: HTMLElement, animate = true) => {
         if (!el) return;
+        if (!animate) ind.style.transition = "none";
         const nr = nav.getBoundingClientRect();
         const r = el.getBoundingClientRect();
         ind.style.setProperty("--ind-x", `${r.left - nr.left}px`);
         ind.style.setProperty("--ind-w", `${r.width}px`);
         ind.style.setProperty("--ind-h", `${r.height}px`);
+        if (!animate) { void ind.offsetWidth; ind.style.transition = ""; }
       };
-      const settle = () => moveTo(active);
+      const settle = (animate = true) => place(active, animate);
       const tabAtX = (x: number) => tabs.find((t) => {
         const r = t.getBoundingClientRect();
         return x >= r.left && x <= r.right;
       });
-      // Position under the active tab after first layout, then reveal (no slide-in flash).
-      requestAnimationFrame(() => { settle(); nav.classList.add("nav-ready"); });
-      window.addEventListener("load", settle);
-      window.addEventListener("resize", settle);
+      // Recreate the apps' inter-tab spring across our static-page reloads: remember
+      // the tab we navigated FROM, and on the next page place the pill there instantly
+      // then spring it to the new active tab. A direct load just places it instantly —
+      // never the old corner fly-in. (Keyed by tab index; the nav is identical per page.)
+      const keyOf = (el: HTMLElement) => String(tabs.indexOf(el));
+      tabs.forEach((t) => t.addEventListener("click", (e) => {
+        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        try { sessionStorage.setItem("gnFrom", keyOf(active)); } catch {}
+      }));
+      let fromEl: HTMLElement | undefined;
+      try {
+        const k = sessionStorage.getItem("gnFrom");
+        sessionStorage.removeItem("gnFrom");
+        if (k !== null) fromEl = tabs[Number(k)];
+      } catch {}
+      requestAnimationFrame(() => {
+        if (!reduce && fromEl && fromEl !== active) {
+          place(fromEl, false);                              // start at the previous tab
+          nav.classList.add("nav-ready");
+          requestAnimationFrame(() => place(active, true));  // spring across to the new one
+        } else {
+          settle(false);                                     // direct load: no animation
+          nav.classList.add("nav-ready");
+        }
+      });
+      window.addEventListener("resize", () => settle(false));
       if (!reduce) {
         let pressing = false;
-        // Press-and-drag: the pill follows the finger/cursor across the tabs (and
-        // mouse hover follows too), then settles where it's released — like the
-        // draggable thumb on a native iOS segmented control.
-        nav.addEventListener("pointerdown", (e) => { pressing = true; moveTo(tabAtX(e.clientX)); });
+        // Tap springs to the tab; a drag then glues the pill to the finger (instant,
+        // no spring lag); release snaps to the tab under the finger with the spring.
+        nav.addEventListener("pointerdown", (e) => { pressing = true; place(tabAtX(e.clientX)); });
         nav.addEventListener("pointermove", (e) => {
-          if (pressing || e.pointerType === "mouse") moveTo(tabAtX(e.clientX));
+          if (pressing) place(tabAtX(e.clientX), false);
+          else if (e.pointerType === "mouse") place(tabAtX(e.clientX));
         });
-        const release = (e: PointerEvent) => { pressing = false; moveTo(tabAtX(e.clientX) ?? active); };
+        const release = (e: PointerEvent) => { pressing = false; place(tabAtX(e.clientX) ?? active); };
         nav.addEventListener("pointerup", release);
         nav.addEventListener("pointercancel", () => { pressing = false; settle(); });
         nav.addEventListener("pointerleave", () => { pressing = false; settle(); });
