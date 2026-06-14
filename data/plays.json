@@ -1,6 +1,6 @@
 {
   "artist": "Poolpat",
-  "last_updated": "2026-06-13T00:25:36+01:00",
+  "last_updated": "2026-06-14T09:24:59.411984+00:00",
   "soundcloud": {
     "url": "https://soundcloud.com/poolpat",
     "tracks": {
@@ -15,10 +15,10 @@
       "The Kraken X Otaku Black X Jimmy Cena Scratch By JusMe": 773,
       "Ooh La La La!": 774,
       "Sephiroth": 827,
-      "Folks Now!": 240,
+      "Folks Now!": 241,
       "Minnie": 248,
       "Flat Monkey Beat": 165,
-      "Keep the Fire Burning (Remix)": 361,
+      "Keep the Fire Burning (Remix)": 362,
       "Get lucky Technologic Bootleg": 219,
       "Tech Mix 124-134BPM": 45,
       "O'sho II": 19,
@@ -42,14 +42,14 @@
       "Collective Suicide (Ft. Otaku Black)": 764,
       "Déjà 30 Piges (feat. Djar One & Jaws) [Remix]": 1355,
       "O'sho | Drogba [x] Poolpat [=] Danilo Milk [~]": 0,
-      "Seven Nation Army": 161,
+      "Seven Nation Army": 166,
       "Cara mo bhean chéile": 149
     },
     "total_plays": 28586,
     "total_tracks": 47,
     "followers": 131,
     "fetch_status": "success",
-    "last_successful_fetch": "2026-06-07T08:48:54.664409+00:00",
+    "last_successful_fetch": "2026-06-14T09:25:01.772863+00:00",
     "total_streams_sc": 18635,
     "total_downloads": 3690,
     "source": "SoundCloud Insights (All Platforms, All Time, 2016-Present)"
@@ -82,7 +82,7 @@
     "monthly_listeners": 14,
     "streams_28d": 26,
     "fetch_status": "success",
-    "last_successful_fetch": "2026-06-07T08:48:56.588683+00:00",
+    "last_successful_fetch": "2026-06-14T09:25:03.489370+00:00",
     "auth_method": "user_token",
     "note": "total_streams/monthly_listeners from Spotify for Artists (manual). Track values are popularity scores.",
     "top_tracks_short": [
@@ -166,6 +166,7 @@
       "Damsels In Distress - Instrumental",
       "Wanna Be Seen",
       "Tapis Rouge - Remix",
+      "Damsels in distress - Instrumental",
       "Get It Out",
       "Samurai Jack",
       "Déjà 30 piges - Remix",
