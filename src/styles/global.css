@@ -37,6 +37,10 @@
   /* Selected-segment thumb: a neutral frosted-glass pill (like the iOS segmented
      control / Music & Instagram tab selection), NOT a brand-color tint. */
   --gn-sel: rgba(255,255,255,0.18);
+  /* Liquid Glass edge lensing — a gradient stroke that simulates light catching the
+     rim (bright top-left → fade → dark bottom-right), which the docs note reads as
+     glass far better than a flat fill/border. Drawn as a masked ring per surface. */
+  --glass-edge: linear-gradient(135deg, rgba(255,255,255,0.55), rgba(255,255,255,0.1) 38%, rgba(255,255,255,0) 56%, rgba(0,0,0,0.28));
   --glass-shadow: 0 12px 32px rgba(0,0,0,0.45);
   --glass-shadow-sm: 0 4px 16px rgba(0,0,0,0.3);
   --sheen: rgba(255,255,255,0.08);
@@ -52,6 +56,7 @@
     --glass-bg: rgba(255,255,255,0.42);
     --glass-bg-lite: rgba(255,255,255,0.72);
     --gn-sel: rgba(255,255,255,0.78);
+    --glass-edge: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.4) 38%, rgba(255,255,255,0) 56%, rgba(0,0,0,0.12));
     --glass-stroke: rgba(0,0,0,0.08);
     --glass-highlight: rgba(255,255,255,0.85);
     --glass-shadow: 0 12px 32px rgba(0,0,0,0.1);
@@ -125,12 +130,23 @@ code { background: var(--card); padding: .15rem .4rem; border-radius: 4px; font-
   display: flex; align-items: center; gap: .25rem;
   padding: .4rem .5rem; border-radius: 999px;
   max-width: calc(100vw - 1.5rem); white-space: nowrap;
-  background: var(--glass-bg);
+  /* subtle top-to-mid structural sheen layered over the tinted glass fill */
+  background: linear-gradient(to bottom, rgba(255,255,255,0.06), rgba(255,255,255,0) 55%), var(--glass-bg);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
   border: 1px solid var(--glass-stroke);
   box-shadow: inset 0 1px 0 var(--glass-highlight), var(--glass-shadow);
   transition: transform .18s cubic-bezier(.2,.7,.3,1), box-shadow .2s ease;
+}
+/* Liquid Glass edge lensing on the pill + its selection thumb: a gradient stroke
+   that catches light at the rim, drawn as a masked ring so it follows the 999px
+   radius (border-image can't round). Sits over the faint base border. */
+.glass-nav::before, .gn-indicator::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+  background: var(--glass-edge);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  pointer-events: none; z-index: 2;
 }
 /* Native segmented-control "pill" that slides between tabs (Poolpat / Stats /
    Discography) the way the Music and Instagram tab bars do. JS (Base.astro)
