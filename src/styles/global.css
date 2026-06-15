@@ -201,9 +201,15 @@ code { background: var(--card); padding: .15rem .4rem; border-radius: 4px; font-
 }
 .gn-cta {
   margin-left: .25rem; padding: .38rem 1rem; border-radius: 999px;
-  background: var(--accent); color: #fff; font-weight: 600; font-size: .92rem; text-decoration: none;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.28);
-  
+  /* HIG color: tint the PRIMARY ACTION as colored Liquid Glass — a translucent
+     accent over the blur so content tones show through, rather than a flat fill —
+     while every other nav element stays untinted ("tint selectively to highlight
+     primary actions; avoid tinting all elements"). */
+  background: linear-gradient(to bottom, rgba(255,255,255,0.2), rgba(255,255,255,0) 60%), rgba(250,35,59,0.78);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  color: #fff; font-weight: 600; font-size: .92rem; text-decoration: none;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 3px 12px rgba(250,35,59,0.3);
   transition: transform .15s ease, opacity .2s ease;
 }
 .gn-cta:hover { transform: scale(1.04); opacity: .94; text-decoration: none; }
