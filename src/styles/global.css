@@ -34,17 +34,19 @@
   --glass-bg-lite: rgba(30,30,34,0.58);
   --glass-stroke: rgba(255,255,255,0.12);
   --glass-highlight: rgba(255,255,255,0.18);
-  /* Selected-segment capsule: a subtle lighter frost on the translucent track
-     (the iOS segmented-control selection look), NOT a brand-color tint. */
+  /* Selected-segment capsule: a subtle lighter frost on the track (the iOS
+     segmented-control selection look), NOT a brand-color tint. */
   --gn-sel: rgba(255,255,255,0.16);
-  /* The nav is Liquid Glass over media: a TRANSLUCENT dark glass you can see through,
-     with white labels — in BOTH schemes. The art behind it is dark, and the dark tint
-     also keeps labels legible when light content scrolls under (a built-in dim). */
-  --nav-glass: rgba(28,28,32,0.4);
-  --gn-label: rgba(255,255,255,0.72);
+  /* The nav uses the HIG *Regular* Liquid Glass variant: the versatile material
+     that "provides legibility regardless of context" and adapts to its light/dark
+     environment — NOT the *Clear* variant (Clear is permanently transparent, has no
+     adaptive behavior, and is only for media-rich content WITH a dimming layer). So
+     it's a substantial, scheme-adaptive frosted material with scheme-coloured text. */
+  --nav-glass: rgba(28,28,30,0.55);
+  --gn-label: rgba(235,235,240,0.7);
   /* Liquid Glass edge lensing — a delicate gradient stroke (bright top-left → fade →
      faint dark bottom-right). Subtle: a glass rim, not a bezel. Masked ring. */
-  --glass-edge: linear-gradient(135deg, rgba(255,255,255,0.3), rgba(255,255,255,0.04) 40%, rgba(255,255,255,0) 60%, rgba(0,0,0,0.12));
+  --glass-edge: linear-gradient(135deg, rgba(255,255,255,0.4), rgba(255,255,255,0.06) 40%, rgba(255,255,255,0) 60%, rgba(0,0,0,0.14));
   --glass-shadow: 0 12px 32px rgba(0,0,0,0.45);
   --glass-shadow-sm: 0 4px 16px rgba(0,0,0,0.3);
   --sheen: rgba(255,255,255,0.08);
@@ -59,8 +61,12 @@
     --map-empty: #dcdce1; --map-stroke: rgba(0,0,0,0.18);
     --glass-bg: rgba(255,255,255,0.42);
     --glass-bg-lite: rgba(255,255,255,0.72);
-    /* nav glass stays the dark "over media" variant in light mode too (inherits
-       --nav-glass / --gn-sel / --gn-label / --glass-edge from the base :root) */
+    /* Regular variant adapts to the light environment: a light frosted material with
+       dark scheme-coloured text and a brighter selected capsule. */
+    --nav-glass: rgba(250,250,252,0.62);
+    --gn-sel: rgba(255,255,255,0.95);
+    --gn-label: rgba(0,0,0,0.55);
+    --glass-edge: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.3) 40%, rgba(255,255,255,0) 60%, rgba(0,0,0,0.08));
     --glass-stroke: rgba(0,0,0,0.08);
     --glass-highlight: rgba(255,255,255,0.85);
     --glass-shadow: 0 12px 32px rgba(0,0,0,0.1);
@@ -170,33 +176,40 @@ code { background: var(--card); padding: .15rem .4rem; border-radius: 4px; font-
 .glass-nav.nav-ready .gn-link[aria-current="page"] { background: transparent; box-shadow: none; }
 .glass-nav:active { transform: translateX(-50%) scale(.985); }
 .gn-home, .gn-links, .gn-cta { position: relative; z-index: 1; }
-/* Nav text is white in BOTH schemes (it sits on the dark "over media" glass).
-   A faint shadow emulates vibrancy so labels hold up over bright spots in the art. */
+/* Scheme-coloured labels (dark glyphs in light mode, light in dark) — the Regular
+   material is substantial enough to keep them legible over any backdrop, the way the
+   HIG Regular variant "provides legibility regardless of context". No text-shadow
+   crutch: the material carries the contrast, not a halo. */
 .gn-home {
   font-family: "SF Pro Display", -apple-system, sans-serif; font-weight: 700; font-size: 1rem;
-  letter-spacing: -0.02em; color: #fff; padding: .35rem .8rem; text-decoration: none;
+  letter-spacing: -0.02em; color: var(--fg); padding: .35rem .8rem; text-decoration: none;
   border-radius: 999px; transition: transform .15s ease, background-color .2s ease;
-  text-shadow: 0 0.5px 1.5px rgba(0,0,0,0.4);
 }
 .gn-home:hover { text-decoration: none; }
-.gn-home:active { transform: scale(.93); background: rgba(255,255,255,0.12); }
+.gn-home:active { transform: scale(.93); background: var(--glass-bg-lite); }
 .gn-links { display: flex; gap: .15rem; }
 .gn-link {
   padding: .35rem .85rem; border-radius: 999px; color: var(--gn-label);
   font-size: .92rem; font-weight: 500; text-decoration: none;
-  text-shadow: 0 0.5px 1.5px rgba(0,0,0,0.4);
   transition: background-color .2s ease, color .2s ease, transform .15s ease;
 }
-.gn-link:hover { color: #fff; background: rgba(255,255,255,0.12); text-decoration: none; }
-.gn-link:active { color: #fff; background: rgba(255,255,255,0.12); transform: scale(.93); }
+.gn-link:hover { color: var(--fg); background: var(--glass-bg-lite); text-decoration: none; }
+.gn-link:active { color: var(--fg); background: var(--glass-bg-lite); transform: scale(.93); }
 .gn-link[aria-current="page"] {
-  color: #fff; background: var(--gn-sel);
+  color: var(--fg); background: var(--gn-sel);
   box-shadow: inset 0 1px 0 var(--glass-highlight);
 }
 .gn-cta {
   margin-left: .25rem; padding: .38rem 1rem; border-radius: 999px;
-  background: var(--accent); color: #fff; font-weight: 600; font-size: .92rem; text-decoration: none;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.28);
+  /* HIG color: tint the PRIMARY ACTION as colored Liquid Glass — a translucent
+     accent over the blur so content tones show through, rather than a flat fill —
+     while every other nav element stays untinted ("tint selectively to highlight
+     primary actions; avoid tinting all elements"). */
+  background: linear-gradient(to bottom, rgba(255,255,255,0.2), rgba(255,255,255,0) 60%), rgba(250,35,59,0.78);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  color: #fff; font-weight: 600; font-size: .92rem; text-decoration: none;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 3px 12px rgba(250,35,59,0.3);
   transition: transform .15s ease, opacity .2s ease;
 }
 .gn-cta:hover { transform: scale(1.04); opacity: .94; text-decoration: none; }
