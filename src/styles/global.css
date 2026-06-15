@@ -34,13 +34,17 @@
   --glass-bg-lite: rgba(30,30,34,0.58);
   --glass-stroke: rgba(255,255,255,0.12);
   --glass-highlight: rgba(255,255,255,0.18);
-  /* Selected-segment thumb: a neutral frosted-glass pill (like the iOS segmented
-     control / Music & Instagram tab selection), NOT a brand-color tint. */
-  --gn-sel: rgba(255,255,255,0.18);
-  /* Liquid Glass edge lensing — a gradient stroke that simulates light catching the
-     rim (bright top-left → fade → dark bottom-right), which the docs note reads as
-     glass far better than a flat fill/border. Drawn as a masked ring per surface. */
-  --glass-edge: linear-gradient(135deg, rgba(255,255,255,0.55), rgba(255,255,255,0.1) 38%, rgba(255,255,255,0) 56%, rgba(0,0,0,0.28));
+  /* Selected-segment capsule: a subtle lighter frost on the translucent track
+     (the iOS segmented-control selection look), NOT a brand-color tint. */
+  --gn-sel: rgba(255,255,255,0.16);
+  /* The nav is Liquid Glass over media: a TRANSLUCENT dark glass you can see through,
+     with white labels — in BOTH schemes. The art behind it is dark, and the dark tint
+     also keeps labels legible when light content scrolls under (a built-in dim). */
+  --nav-glass: rgba(28,28,32,0.4);
+  --gn-label: rgba(255,255,255,0.72);
+  /* Liquid Glass edge lensing — a delicate gradient stroke (bright top-left → fade →
+     faint dark bottom-right). Subtle: a glass rim, not a bezel. Masked ring. */
+  --glass-edge: linear-gradient(135deg, rgba(255,255,255,0.3), rgba(255,255,255,0.04) 40%, rgba(255,255,255,0) 60%, rgba(0,0,0,0.12));
   --glass-shadow: 0 12px 32px rgba(0,0,0,0.45);
   --glass-shadow-sm: 0 4px 16px rgba(0,0,0,0.3);
   --sheen: rgba(255,255,255,0.08);
@@ -55,8 +59,8 @@
     --map-empty: #dcdce1; --map-stroke: rgba(0,0,0,0.18);
     --glass-bg: rgba(255,255,255,0.42);
     --glass-bg-lite: rgba(255,255,255,0.72);
-    --gn-sel: rgba(255,255,255,0.78);
-    --glass-edge: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.4) 38%, rgba(255,255,255,0) 56%, rgba(0,0,0,0.12));
+    /* nav glass stays the dark "over media" variant in light mode too (inherits
+       --nav-glass / --gn-sel / --gn-label / --glass-edge from the base :root) */
     --glass-stroke: rgba(0,0,0,0.08);
     --glass-highlight: rgba(255,255,255,0.85);
     --glass-shadow: 0 12px 32px rgba(0,0,0,0.1);
@@ -130,8 +134,8 @@ code { background: var(--card); padding: .15rem .4rem; border-radius: 4px; font-
   display: flex; align-items: center; gap: .25rem;
   padding: .4rem .5rem; border-radius: 999px;
   max-width: calc(100vw - 1.5rem); white-space: nowrap;
-  /* subtle top-to-mid structural sheen layered over the tinted glass fill */
-  background: linear-gradient(to bottom, rgba(255,255,255,0.06), rgba(255,255,255,0) 55%), var(--glass-bg);
+  /* subtle top-to-mid structural sheen layered over the legible Regular-glass fill */
+  background: linear-gradient(to bottom, rgba(255,255,255,0.06), rgba(255,255,255,0) 55%), var(--nav-glass);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
   border: 1px solid var(--glass-stroke);
@@ -166,23 +170,27 @@ code { background: var(--card); padding: .15rem .4rem; border-radius: 4px; font-
 .glass-nav.nav-ready .gn-link[aria-current="page"] { background: transparent; box-shadow: none; }
 .glass-nav:active { transform: translateX(-50%) scale(.985); }
 .gn-home, .gn-links, .gn-cta { position: relative; z-index: 1; }
+/* Nav text is white in BOTH schemes (it sits on the dark "over media" glass).
+   A faint shadow emulates vibrancy so labels hold up over bright spots in the art. */
 .gn-home {
   font-family: "SF Pro Display", -apple-system, sans-serif; font-weight: 700; font-size: 1rem;
-  letter-spacing: -0.02em; color: var(--fg); padding: .35rem .8rem; text-decoration: none;
+  letter-spacing: -0.02em; color: #fff; padding: .35rem .8rem; text-decoration: none;
   border-radius: 999px; transition: transform .15s ease, background-color .2s ease;
+  text-shadow: 0 0.5px 1.5px rgba(0,0,0,0.4);
 }
 .gn-home:hover { text-decoration: none; }
-.gn-home:active { transform: scale(.93); background: var(--glass-bg-lite); }
+.gn-home:active { transform: scale(.93); background: rgba(255,255,255,0.12); }
 .gn-links { display: flex; gap: .15rem; }
 .gn-link {
-  padding: .35rem .85rem; border-radius: 999px; color: var(--muted);
+  padding: .35rem .85rem; border-radius: 999px; color: var(--gn-label);
   font-size: .92rem; font-weight: 500; text-decoration: none;
+  text-shadow: 0 0.5px 1.5px rgba(0,0,0,0.4);
   transition: background-color .2s ease, color .2s ease, transform .15s ease;
 }
-.gn-link:hover { color: var(--fg); background: var(--glass-bg-lite); text-decoration: none; }
-.gn-link:active { color: var(--fg); background: var(--glass-bg-lite); transform: scale(.93); }
+.gn-link:hover { color: #fff; background: rgba(255,255,255,0.12); text-decoration: none; }
+.gn-link:active { color: #fff; background: rgba(255,255,255,0.12); transform: scale(.93); }
 .gn-link[aria-current="page"] {
-  color: var(--fg); background: var(--gn-sel);
+  color: #fff; background: var(--gn-sel);
   box-shadow: inset 0 1px 0 var(--glass-highlight);
 }
 .gn-cta {
