@@ -1,0 +1,158 @@
+---
+import "@/styles/global.css";
+import SEOHead from "@/components/SEOHead.astro";
+import { link, hashCampaign } from "@affiliate";
+
+interface Props {
+  title: string;
+  description?: string;
+  ogImage?: string;
+  ogType?: "website" | "music.album" | "music.song";
+  canonicalPath?: string;
+  structuredData?: object;
+}
+const {
+  title,
+  description = "Poolpat — Cork trip-hop artist. Live play stats, discography, and liner notes across SoundCloud, Spotify, and Apple Music.",
+  ogImage = `${import.meta.env.BASE_URL}artwork/artist-banner.png`,
+  ogType = "website",
+  canonicalPath,
+  structuredData,
+} = Astro.props;
+
+const siteUrl = import.meta.env.SITE ?? "https://thepoolpat.github.io";
+const canonical = `${siteUrl}${import.meta.env.BASE_URL}${(canonicalPath ?? "").replace(/^\//, "")}`;
+
+const footerAmHref = link({
+  storefront: "ie",
+  type: "artist",
+  slug: "poolpat",
+  id: "1716939831",
+  campaign: hashCampaign("web-portfolio-footer-artist"),
+});
+
+const baseUrl = import.meta.env.BASE_URL;
+const path = Astro.url.pathname;
+const navActive = {
+  home: path === baseUrl || path === baseUrl.replace(/\/$/, ""),
+  stats: path.startsWith(`${baseUrl}stats`),
+  disco: path.startsWith(`${baseUrl}discography`) || path.startsWith(`${baseUrl}releases`),
+};
+const navAmHref = link({
+  storefront: "ie",
+  type: "artist",
+  slug: "poolpat",
+  id: "1716939831",
+  campaign: hashCampaign("web-portfolio-nav-listen"),
+});
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0b0b0c" media="(prefers-color-scheme: dark)" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self'; base-uri 'self'; object-src 'none'" />
+  <SEOHead
+    title={title}
+    description={description}
+    ogImage={ogImage}
+    ogType={ogType}
+    canonicalUrl={canonical}
+    structuredData={structuredData}
+  />
+  <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}favicon.svg`} />
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <div class="backdrop" aria-hidden="true"><i></i><i></i><i></i></div>
+  <nav class="glass-nav" aria-label="Site">
+    <span class="gn-indicator" aria-hidden="true"></span>
+    <a class="gn-home" href={baseUrl} aria-current={navActive.home ? "page" : undefined}>Poolpat</a>
+    <div class="gn-links">
+      <a class="gn-link" href={`${baseUrl}stats/`} aria-current={navActive.stats ? "page" : undefined}>Stats</a>
+      <a class="gn-link" href={`${baseUrl}discography/`} aria-current={navActive.disco ? "page" : undefined}>Discography</a>
+    </div>
+    <a class="gn-cta" href={navAmHref} target="_blank" rel="noopener noreferrer" aria-label="Listen to Poolpat on Apple Music">Listen</a>
+  </nav>
+  <main id="main-content" tabindex="-1">
+    <slot />
+  </main>
+  <footer>
+    &copy; Poolpat &middot; Cork, Ireland &middot;
+    <a href={footerAmHref} target="_blank" rel="noopener">Apple Music</a> &middot;
+    <a href="https://soundcloud.com/poolpat" target="_blank" rel="noopener">SoundCloud</a> &middot;
+    <a href="https://open.spotify.com/artist/4rr3o9anpUXitNXo0W4uX7" target="_blank" rel="noopener">Spotify</a>
+  </footer>
+  <script>
+    // Native segmented-control pill: slide the highlight under the active tab,
+    // and follow hover / touch the way the Music and Instagram tab bars do.
+    const nav = document.querySelector<HTMLElement>(".glass-nav");
+    const ind = nav?.querySelector<HTMLElement>(".gn-indicator");
+    if (nav && ind) {
+      const tabs = Array.from(nav.querySelectorAll<HTMLElement>(".gn-home, .gn-link"));
+      const active = tabs.find((t) => t.getAttribute("aria-current") === "page") ?? tabs[0];
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      // animate=false jumps instantly (transition suppressed + reflushed) so the
+      // pill never springs in from the corner on load and stays glued to the
+      // finger mid-drag; animate=true lets the CSS spring play (tap / hover / snap).
+      const place = (el?: HTMLElement, animate = true) => {
+        if (!el) return;
+        if (!animate) ind.style.transition = "none";
+        const nr = nav.getBoundingClientRect();
+        const r = el.getBoundingClientRect();
+        ind.style.setProperty("--ind-x", `${r.left - nr.left}px`);
+        ind.style.setProperty("--ind-w", `${r.width}px`);
+        ind.style.setProperty("--ind-h", `${r.height}px`);
+        if (!animate) { void ind.offsetWidth; ind.style.transition = ""; }
+      };
+      const settle = (animate = true) => place(active, animate);
+      const tabAtX = (x: number) => tabs.find((t) => {
+        const r = t.getBoundingClientRect();
+        return x >= r.left && x <= r.right;
+      });
+      // Recreate the apps' inter-tab spring across our static-page reloads: remember
+      // the tab we navigated FROM, and on the next page place the pill there instantly
+      // then spring it to the new active tab. A direct load just places it instantly —
+      // never the old corner fly-in. (Keyed by tab index; the nav is identical per page.)
+      const keyOf = (el: HTMLElement) => String(tabs.indexOf(el));
+      tabs.forEach((t) => t.addEventListener("click", (e) => {
+        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        try { sessionStorage.setItem("gnFrom", keyOf(active)); } catch {}
+      }));
+      let fromEl: HTMLElement | undefined;
+      try {
+        const k = sessionStorage.getItem("gnFrom");
+        sessionStorage.removeItem("gnFrom");
+        if (k !== null) fromEl = tabs[Number(k)];
+      } catch {}
+      requestAnimationFrame(() => {
+        if (!reduce && fromEl && fromEl !== active) {
+          place(fromEl, false);                              // start at the previous tab
+          nav.classList.add("nav-ready");
+          requestAnimationFrame(() => place(active, true));  // spring across to the new one
+        } else {
+          settle(false);                                     // direct load: no animation
+          nav.classList.add("nav-ready");
+        }
+      });
+      window.addEventListener("resize", () => settle(false));
+      if (!reduce) {
+        let pressing = false;
+        // Tap springs to the tab; a drag then glues the pill to the finger (instant,
+        // no spring lag); release snaps to the tab under the finger with the spring.
+        nav.addEventListener("pointerdown", (e) => { pressing = true; place(tabAtX(e.clientX)); });
+        nav.addEventListener("pointermove", (e) => {
+          if (pressing) place(tabAtX(e.clientX), false);
+          else if (e.pointerType === "mouse") place(tabAtX(e.clientX));
+        });
+        const release = (e: PointerEvent) => { pressing = false; place(tabAtX(e.clientX) ?? active); };
+        nav.addEventListener("pointerup", release);
+        nav.addEventListener("pointercancel", () => { pressing = false; settle(); });
+        nav.addEventListener("pointerleave", () => { pressing = false; settle(); });
+      }
+    }
+  </script>
+</body>
+</html>

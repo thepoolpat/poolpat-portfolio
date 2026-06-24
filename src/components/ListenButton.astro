@@ -1,0 +1,18 @@
+---
+import { link } from "@affiliate";
+
+interface Props {
+  storefront: string;
+  type: "album" | "song" | "playlist" | "artist";
+  slug: string;
+  id: string;
+  campaign: string;
+  small?: boolean;
+}
+const { storefront, type, slug, id, campaign, small = false } = Astro.props;
+const href = link({ storefront, type, slug, id, campaign });
+const cls = small ? "listen-cta listen-cta--small" : "listen-cta";
+---
+<a class={cls} href={href} target="_blank" rel="noopener noreferrer" aria-label="Listen on Apple Music">
+  <slot>Listen on Apple Music</slot>
+</a>

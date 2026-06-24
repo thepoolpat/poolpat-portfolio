@@ -1,0 +1,544 @@
+:root {
+  --bg: #0b0b0c;
+  --fg: #f5f5f7;
+  --muted: #98989d;
+  --accent: #fa233b;
+  --card: #1c1c1e;
+  --border: rgba(255,255,255,0.08);
+  --radius: 20px;
+  --radius-lg: 28px;
+  --radius-sm: 12px;
+  --max: 900px;
+  --accent-sc: #ff5500;
+  --accent-sp: #1db954;
+  --accent-am: #fa233b;
+  --map-empty: #2a2a2e;
+  --map-stroke: rgba(255,255,255,0.14);
+  /* Glass material is driven by two tunables so every blurred surface stays in
+     lockstep, and so the whole site can be re-tinted from a single override.
+     Defaults emulate the adaptive *Regular* Liquid Glass material (medium tint,
+     legible over any backdrop) rather than the *Clear* variant, which Apple
+     reserves for media and requires a dimming layer. NOTE: the OS Clear↔Tinted
+     slider (Display & Brightness) is NOT exposed to web content — only Settings ▸
+     Accessibility ▸ Reduce Transparency is, via prefers-reduced-transparency,
+     which the block far below honors by collapsing the glass to an opaque fill. */
+  --glass-blur: 28px;
+  --glass-sat: 180%;
+  /* Native tab-indicator spring (SwiftUI snappy: response 0.40, damping 0.78) as
+     a CSS linear() curve — a true damped spring with ~2% overshoot, the way the
+     Music / Instagram tab bars animate on iOS/iPadOS/macOS 26–27. Paired with a
+     cubic-bezier fallback wherever it's used, for engines without linear(). */
+  --spring: linear(0.0 0%, 0.0577 4.5%, 0.1889 9.1%, 0.3474 13.6%, 0.5043 18.2%, 0.6438 22.7%, 0.7591 27.3%, 0.8486 31.8%, 0.9144 36.4%, 0.9601 40.9%, 0.9897 45.5%, 1.0073 50%, 1.0164 54.5%, 1.0197 59.1%, 1.0195 63.6%, 1.0173 68.2%, 1.0143 72.7%, 1.0111 77.3%, 1.0081 81.8%, 1.0056 86.4%, 1.0037 90.9%, 1.0022 95.5%, 1.0 100%);
+  --glass-bg-lite: rgba(30,30,34,0.58);
+  --glass-stroke: rgba(255,255,255,0.12);
+  --glass-highlight: rgba(255,255,255,0.18);
+  /* Selected-segment capsule: a subtle lighter frost on the track (the iOS
+     segmented-control selection look), NOT a brand-color tint. */
+  --gn-sel: rgba(255,255,255,0.16);
+  /* The nav uses the HIG *Regular* Liquid Glass variant: the versatile material
+     that "provides legibility regardless of context" and adapts to its light/dark
+     environment — NOT the *Clear* variant (Clear is permanently transparent, has no
+     adaptive behavior, and is only for media-rich content WITH a dimming layer). So
+     it's a substantial, scheme-adaptive frosted material with scheme-coloured text. */
+  --glass-regular: rgba(28,28,30,0.55);
+  /* The fixed nav floats over arbitrary scrolling album art, so its inactive-label
+     contrast depends on whatever shows through. A dedicated, more-opaque nav fill
+     keeps those labels ≥ WCAG AA (4.5:1) over any backdrop, without weighting down
+     the lighter content panels below. */
+  --glass-nav: rgba(28,28,30,0.82);
+  /* Large content panels (stat tiles, listener map) sit over the page's own light
+     backdrop, not over media — so they use a CLEARER Regular glass than the floating
+     chrome, which reads airier while their content stays legible over that backdrop. */
+  --glass-panel: rgba(28,28,30,0.5);
+  --gn-label: rgba(235,235,240,0.7);
+  /* Liquid Glass edge lensing — a delicate gradient stroke (bright top-left → fade →
+     faint dark bottom-right). Subtle: a glass rim, not a bezel. Masked ring. */
+  --glass-edge: linear-gradient(135deg, rgba(255,255,255,0.4), rgba(255,255,255,0.06) 40%, rgba(255,255,255,0) 60%, rgba(0,0,0,0.14));
+  --glass-shadow: 0 12px 32px rgba(0,0,0,0.45);
+  --glass-shadow-sm: 0 4px 16px rgba(0,0,0,0.3);
+  --sheen: rgba(255,255,255,0.08);
+  --dot: rgba(255,255,255,0.35);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #fafafa; --fg: #1d1d1f; --muted: #6e6e73;
+    --card: #ffffff; --border: rgba(0,0,0,0.08); color-scheme: light;
+    --map-empty: #dcdce1; --map-stroke: rgba(0,0,0,0.18);
+    --glass-bg-lite: rgba(255,255,255,0.72);
+    /* Regular variant adapts to the light environment: a light frosted material with
+       dark scheme-coloured text and a brighter selected capsule. */
+    --glass-regular: rgba(250,250,252,0.62);
+    --glass-nav: rgba(250,250,252,0.85);
+    --glass-panel: rgba(252,252,254,0.46);
+    --gn-sel: rgba(255,255,255,0.95);
+    /* 0.70 (not the airier 0.55): a translucent glass nav can't carry a 0.55 label to
+       WCAG AA over a near-black album cover scrolling under it — the fill alone tops
+       out ~4.5:1. Matches the dark-mode label alpha; still distinct from the --fg active state. */
+    --gn-label: rgba(0,0,0,0.7);
+    --glass-edge: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.3) 40%, rgba(255,255,255,0) 60%, rgba(0,0,0,0.08));
+    --glass-stroke: rgba(0,0,0,0.08);
+    --glass-highlight: rgba(255,255,255,0.85);
+    --glass-shadow: 0 12px 32px rgba(0,0,0,0.1);
+    --glass-shadow-sm: 0 3px 12px rgba(0,0,0,0.07);
+    --sheen: rgba(255,255,255,0.6);
+    --dot: rgba(0,0,0,0.3);
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; color: var(--fg); }
+/* bg lives on html only: a bg on body would paint over the fixed z-index:-1 backdrop.
+   The native scroll rebound is kept — instead of suppressing it, the .backdrop fades
+   to var(--bg) at its top/bottom edges (mask, below), so the rebound reveals that same
+   base color as a smooth continuation rather than a hard wallpaper cutoff. */
+html { background: var(--bg); }
+body { font-size: 17px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+/* Interactive chrome handles its own press feedback; suppress the grey iOS tap flash
+   and the 300ms double-tap delay so taps register instantly (see .gn-* :active). */
+a, button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+main { max-width: var(--max); margin: 0 auto; padding: 5.5rem 1.5rem 6rem; }
+h1, h2, h3 { font-family: "SF Pro Display", -apple-system, sans-serif; letter-spacing: -0.02em; }
+h1 { font-size: 2.4rem; font-weight: 700; margin: 0 0 .5rem; }
+h2 { font-size: 1.55rem; font-weight: 700; letter-spacing: -0.022em; margin: 2.6rem 0 .9rem; }
+h3 { font-size: 1.1rem; font-weight: 600; margin: 1.4rem 0 .4rem; }
+p { color: var(--fg); }
+.muted { color: var(--muted); }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { background: var(--card); padding: .15rem .4rem; border-radius: 4px; font-size: .85em; }
+
+.skip-link {
+  position: absolute; left: -9999px; top: 0; z-index: 100;
+  background: var(--accent); color: #fff; padding: .5rem 1rem; border-radius: 0 0 var(--radius) 0;
+}
+.skip-link:focus { left: 0; }
+
+/* Ambient layer — fixed smoke behind everything; glass chrome floats above it.
+   The container carries a "floor" glow rising from the bottom edge so the lower
+   third of the viewport isn't dead black — the corner blobs alone left the
+   wallpaper looking like it stopped ~2/3 down the screen. */
+.backdrop {
+  position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+  background: radial-gradient(115% 72% at 50% 104%, rgba(108,92,232,0.17), transparent 66%);
+  /* Fade the whole wallpaper (floor glow + blobs + grain) to var(--bg) at the very
+     top and bottom edges so the native scroll rebound continues that base color as a
+     soft gradient instead of slamming into a hard pitch-black / white cutoff. */
+  -webkit-mask: linear-gradient(to bottom, transparent 0, #000 6%, #000 94%, transparent 100%);
+  mask: linear-gradient(to bottom, transparent 0, #000 6%, #000 94%, transparent 100%);
+}
+.backdrop i { position: absolute; display: block; width: 65vmax; height: 65vmax; border-radius: 50%; }
+.backdrop i:nth-child(1) { top: -25vmax; left: -20vmax; background: radial-gradient(circle, rgba(255,85,0,0.16), transparent 62%); }
+.backdrop i:nth-child(2) { top: 12%; right: -28vmax; background: radial-gradient(circle, rgba(250,35,59,0.13), transparent 62%); }
+.backdrop i:nth-child(3) { bottom: -30vmax; left: -12vmax; background: radial-gradient(circle, rgba(94,92,230,0.16), transparent 62%); }
+.backdrop::after {
+  content: ""; position: absolute; inset: 0; opacity: 0.05;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E") repeat;
+}
+@media (prefers-color-scheme: light) {
+  .backdrop { background: radial-gradient(115% 72% at 50% 104%, rgba(108,92,232,0.1), transparent 66%); }
+  .backdrop i:nth-child(1) { background: radial-gradient(circle, rgba(255,85,0,0.1), transparent 62%); }
+  .backdrop i:nth-child(2) { background: radial-gradient(circle, rgba(250,35,59,0.08), transparent 62%); }
+  .backdrop i:nth-child(3) { background: radial-gradient(circle, rgba(94,92,230,0.1), transparent 62%); }
+  .backdrop::after { opacity: 0.035; }
+}
+
+/* Floating glass nav — backdrop-filter budget: nav, stat tiles, chart, map panel,
+   hero nav-btns + dots capsule, and the tiny .release-card .badge pills are the
+   ONLY true-glass (blurred) surfaces */
+.glass-nav {
+  position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 50;
+  display: flex; align-items: center; gap: .25rem;
+  padding: .4rem .5rem; border-radius: 999px;
+  max-width: calc(100vw - 1.5rem); white-space: nowrap;
+  /* subtle top-to-mid structural sheen layered over the legible Regular-glass fill */
+  background: linear-gradient(to bottom, rgba(255,255,255,0.06), rgba(255,255,255,0) 55%), var(--glass-nav);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  border: 1px solid var(--glass-stroke);
+  box-shadow: inset 0 1px 0 var(--glass-highlight), var(--glass-shadow);
+  transition: transform .18s cubic-bezier(.2,.7,.3,1), box-shadow .2s ease;
+}
+/* Liquid Glass edge lensing on the pill + its selection thumb: a gradient stroke
+   that catches light at the rim, drawn as a masked ring so it follows the 999px
+   radius (border-image can't round). Sits over the faint base border. */
+.glass-nav::before, .gn-indicator::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+  background: var(--glass-edge);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  pointer-events: none; z-index: 2;
+}
+/* Native segmented-control "pill" that slides between tabs (Poolpat / Stats /
+   Discography) the way the Music and Instagram tab bars do. JS (Base.astro)
+   sets --ind-x/-w/-h to the active tab on load and to the hovered/pressed tab
+   on pointer; the springy cubic-bezier gives the slide its native overshoot.
+   No-JS / pre-hydration falls back to the static [aria-current] tint below. */
+.gn-indicator {
+  position: absolute; top: 50%; left: 0; z-index: 0; pointer-events: none;
+  height: var(--ind-h, 30px); width: var(--ind-w, 0);
+  transform: translate(var(--ind-x, 0), -50%);
+  border-radius: 999px; background: var(--gn-sel);
+  box-shadow: inset 0 1px 0 var(--glass-highlight), 0 1px 3px rgba(0,0,0,0.18); opacity: 0;
+  transition: transform .525s cubic-bezier(.34,1.3,.5,1), width .525s cubic-bezier(.34,1.3,.5,1), opacity .25s ease;
+  transition: transform .525s var(--spring), width .525s var(--spring), opacity .25s ease;
+}
+.glass-nav.nav-ready .gn-indicator { opacity: 1; }
+.glass-nav.nav-ready .gn-link[aria-current="page"] { background: transparent; box-shadow: none; }
+.glass-nav:active { transform: translateX(-50%) scale(.985); }
+.gn-home, .gn-links, .gn-cta { position: relative; z-index: 1; }
+/* Scheme-coloured labels (dark glyphs in light mode, light in dark) — the Regular
+   material is substantial enough to keep them legible over any backdrop, the way the
+   HIG Regular variant "provides legibility regardless of context". No text-shadow
+   crutch: the material carries the contrast, not a halo. */
+.gn-home {
+  font-family: "SF Pro Display", -apple-system, sans-serif; font-weight: 700; font-size: 1rem;
+  letter-spacing: -0.02em; color: var(--fg); padding: .35rem .8rem; text-decoration: none;
+  border-radius: 999px; transition: transform .15s ease, background-color .2s ease;
+}
+.gn-home:hover { text-decoration: none; }
+.gn-home:active { transform: scale(.93); background: var(--glass-bg-lite); }
+.gn-links { display: flex; gap: .15rem; }
+.gn-link {
+  padding: .35rem .85rem; border-radius: 999px; color: var(--gn-label);
+  font-size: .92rem; font-weight: 500; text-decoration: none;
+  transition: background-color .2s ease, color .2s ease, transform .15s ease;
+}
+.gn-link:hover { color: var(--fg); background: var(--glass-bg-lite); text-decoration: none; }
+.gn-link:active { color: var(--fg); background: var(--glass-bg-lite); transform: scale(.93); }
+.gn-link[aria-current="page"] {
+  color: var(--fg); background: var(--gn-sel);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+}
+.gn-cta {
+  margin-left: .25rem; padding: .38rem 1rem; border-radius: 999px;
+  /* HIG color: the PRIMARY ACTION is the one tinted element ("tint selectively to
+     highlight primary actions; avoid tinting all elements"). White-on-brand-red
+     (--accent #fa233b) can't clear WCAG AA at any opacity, so this single button uses
+     a slightly darker solid red (#d4112f, ~5.4:1). Opaque, so no backdrop blur needed. */
+  background: linear-gradient(to bottom, rgba(255,255,255,0.12), rgba(255,255,255,0) 60%), #d4112f;
+  color: #fff; font-weight: 600; font-size: .92rem; text-decoration: none;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 3px 12px rgba(250,35,59,0.3);
+  transition: transform .15s ease, opacity .2s ease;
+}
+.gn-cta:hover { transform: scale(1.04); opacity: .94; text-decoration: none; }
+.gn-cta:active { transform: scale(0.96); }
+
+.artwork {
+  width: 100%; aspect-ratio: 1; border-radius: var(--radius-lg);
+  background: var(--card) center/cover no-repeat; margin-bottom: 1.5rem;
+  border: 1px solid var(--glass-stroke); overflow: hidden; position: relative;
+  box-shadow: inset 0 1px 0 var(--glass-highlight), 0 18px 50px rgba(0,0,0,0.4);
+}
+.artwork img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tagline { font-size: 1.15rem; color: var(--muted); margin-bottom: 2rem; line-height: 1.45; }
+
+.section { margin: 2.5rem 0; }
+.section h2 { padding-bottom: 0; margin-bottom: 1rem; }
+.section p { color: var(--fg); opacity: .9; }
+.tracks {
+  list-style: none; padding: 0; margin: 1rem 0 0;
+  border: 1px solid var(--glass-stroke); border-radius: var(--radius); overflow: hidden;
+  background: var(--glass-bg-lite);
+  box-shadow: inset 0 1px 0 var(--glass-highlight), var(--glass-shadow-sm);
+}
+.track { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.15rem; border-top: 1px solid var(--border); }
+.track:first-child { border-top: none; }
+.track-num { color: var(--muted); width: 1.5rem; text-align: right; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.track-title { flex: 1; font-weight: 500; font-size: .95rem; line-height: 1.3; }
+.track-duration { color: var(--muted); font-variant-numeric: tabular-nums; font-size: .85rem; flex-shrink: 0; }
+
+.listen-cta {
+  display: inline-flex; align-items: center; gap: .5rem;
+  background: var(--accent); color: #fff !important; font-weight: 600;
+  padding: .65rem 1.1rem; border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.28), var(--glass-shadow-sm);
+  transition: transform .15s ease, box-shadow .2s ease; text-decoration: none;
+}
+.listen-cta:hover {
+  text-decoration: none; transform: translateY(-1px) scale(1.02);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.34), 0 6px 20px rgba(250,35,59,0.35);
+}
+.listen-cta:active { transform: scale(0.97); }
+.listen-cta--small { font-size: .85rem; padding: .35rem .8rem; }
+.listen-cta::before { content: "\266A"; font-size: 1.05em; }
+
+.meta { display: flex; gap: .6rem; flex-wrap: wrap; margin: .5rem 0 1.2rem; font-size: .82rem; color: var(--muted); }
+.meta span {
+  display: inline-flex; align-items: center; gap: .3rem;
+  background: var(--glass-bg-lite); border: 1px solid var(--glass-stroke);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  padding: .35rem .65rem; border-radius: 999px;
+}
+.badge-type { background: var(--accent) !important; color: #fff !important; border-color: transparent !important; }
+.chart-badge { background: linear-gradient(135deg, #1a1a2e, #16213e) !important; border-color: var(--accent) !important; color: var(--accent) !important; font-weight: 700 !important; font-size: .78rem !important; }
+
+.releases { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+/* Square tile (Music / Instagram grid): the artwork fills a 1:1 card and the
+   caption is overlaid on a bottom scrim, instead of a portrait card made of a
+   square cover stacked above a separate text strip. */
+.release-card {
+  background: var(--card); border: 1px solid var(--glass-stroke);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  border-radius: var(--radius); overflow: hidden; display: block;
+  color: var(--fg); text-decoration: none; position: relative; aspect-ratio: 1;
+  transition: transform .15s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.release-card:hover {
+  transform: translateY(-3px); border-color: var(--accent); text-decoration: none;
+  box-shadow: inset 0 1px 0 var(--glass-highlight), var(--glass-shadow);
+}
+.release-card .cover {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: center; display: block; background: var(--card);
+}
+.release-card .info {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; padding: 1.7rem .85rem .75rem;
+  background: linear-gradient(to top, rgba(0,0,0,.82) 12%, rgba(0,0,0,.45) 55%, transparent);
+}
+.release-card .title { color: #fff; font-weight: 600; display: block; margin-bottom: .15rem; line-height: 1.25; font-size: .95rem; text-shadow: 0 1px 3px rgba(0,0,0,.55); }
+.release-card .date { color: rgba(255,255,255,.82); font-size: .8rem; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+.release-card .badge { position: absolute; top: .6rem; right: .6rem; background: rgba(0,0,0,.7); color: #fff; font-size: .65rem; padding: .2rem .5rem; border-radius: 999px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); z-index: 1; }
+
+.hero { position: relative; margin-bottom: 2rem; }
+.hero-stage { position: relative; min-height: 420px; }
+.hero-slide { position: absolute; top: 0; left: 0; right: 0; opacity: 0; transition: opacity .6s ease; pointer-events: none; }
+.hero-slide.active { opacity: 1; pointer-events: auto; position: relative; }
+.hero-controls { display: flex; align-items: center; justify-content: center; gap: .75rem; margin-top: 1.2rem; }
+.hero-dots {
+  display: flex; gap: .45rem; align-items: center;
+  height: 38px; padding: 0 .85rem; border-radius: 999px; /* concentric with the 38px .nav-btn circles */
+  background: var(--glass-regular);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  border: 1px solid var(--glass-stroke);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; border: none; background: var(--dot); cursor: pointer; padding: 0; transition: all .2s ease; }
+.dot.active { background: var(--accent); width: 24px; border-radius: 4px; }
+.nav-btn {
+  background: var(--glass-regular);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  border: 1px solid var(--glass-stroke); color: var(--fg);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  width: 38px; height: 38px; border-radius: 50%; cursor: pointer; font-size: 1rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .15s ease, color .15s ease, border-color .15s ease;
+}
+.nav-btn:hover { border-color: var(--accent); color: var(--accent); transform: scale(1.07); }
+.nav-btn:active { transform: scale(0.92); }
+.rotation-status { font-size: .75rem; color: var(--muted); text-align: center; margin-top: .5rem; font-variant-numeric: tabular-nums; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+.stat-card {
+  position: relative; overflow: hidden; text-align: center;
+  padding: 1.4rem 1.2rem 1.3rem; border-radius: var(--radius);
+  background: var(--glass-panel);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  border: 1px solid var(--glass-stroke);
+  box-shadow: inset 0 1px 0 var(--glass-highlight), var(--glass-shadow-sm);
+}
+/* platform tint — glow + hairline driven by --tint from StatCard.astro; both vanish untinted */
+.stat-card::before {
+  content: ""; position: absolute; inset: 0 0 auto; height: 70px; pointer-events: none;
+  /* rim-light, not a banner: gradient peaks above the card edge so the bloom
+     stays at the rim and the hairline ::after remains the visual signature */
+  background: radial-gradient(120% 130% at 50% -20%, var(--tint, transparent), transparent 75%);
+  opacity: .2;
+}
+.stat-card::after {
+  content: ""; position: absolute; top: 0; left: 18%; right: 18%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--tint, transparent), transparent);
+}
+.stat-card .label { color: var(--muted); font-size: .82rem; font-weight: 600; letter-spacing: .005em; margin-bottom: .45rem; }
+.stat-card .value { font-family: "SF Pro Display", -apple-system, sans-serif; font-size: 2.1rem; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.stat-card .sub { color: var(--muted); font-size: .75rem; margin-top: .3rem; }
+
+/* stays dark in BOTH schemes: Chart.js text inside is hardcoded light (#f5f5f7) */
+/* Same Regular-glass panel material as the stat tiles (chart text adapts to the
+   scheme in stats.astro, so the panel no longer needs to be forced dark). */
+.chart-container {
+  border-radius: var(--radius); padding: 1.5rem; margin: 1.5rem 0;
+  background: var(--glass-panel);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  border: 1px solid var(--glass-stroke);
+  box-shadow: inset 0 1px 0 var(--glass-highlight), var(--glass-shadow-sm);
+}
+.chart-container canvas { width: 100% !important; max-height: 350px; }
+
+/* Listener map — homepage choropleth (build-time static SVG, no JS), framed as a glass panel */
+.listener-map {
+  margin: 1.5rem 0 0; padding: 1.15rem 1.15rem 1rem; border-radius: var(--radius);
+  background: var(--glass-panel);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  border: 1px solid var(--glass-stroke);
+  box-shadow: inset 0 1px 0 var(--glass-highlight), var(--glass-shadow-sm);
+}
+.map-title { font-size: 1rem; font-weight: 600; margin: 0 0 .6rem; font-family: "SF Pro Display", -apple-system, sans-serif; letter-spacing: -0.01em; }
+.map-title .muted { font-weight: 400; }
+.listener-map svg { width: 100%; height: auto; display: block; background: transparent; border-radius: var(--radius-sm); }
+.listener-map .land { transition: stroke .15s ease; }
+.listener-map .has-data:hover { stroke: var(--fg); stroke-width: 0.9px; }
+.map-caption { display: flex; align-items: center; justify-content: space-between; gap: .6rem 1.5rem; flex-wrap: wrap; margin-top: .7rem; font-size: .8rem; }
+.map-legend { display: inline-flex; align-items: center; gap: .5rem; }
+.map-legend-label { color: var(--muted); font-size: .75rem; }
+.map-legend-bar { width: 120px; height: 10px; border-radius: 5px; background: linear-gradient(90deg, rgba(255,85,0,.18), rgba(255,85,0,1)); }
+
+/* SoundCloud Top Locations — two-column flag lists (stats page) */
+.locations-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem 1.5rem; }
+.location-col h3 { margin: .2rem 0 0; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+.location-col .tracks { margin-top: .6rem; }
+.location-col .track { gap: .75rem; }
+.flag { width: 24px; height: 18px; flex-shrink: 0; border-radius: 3px; object-fit: cover; box-shadow: 0 0 0 1px var(--border); background: var(--card); }
+
+.nav-links { display: flex; gap: .8rem; flex-wrap: wrap; margin: 1rem 0; }
+.nav-link {
+  display: inline-flex; align-items: center; gap: .4rem; padding: .5rem 1rem;
+  background: var(--glass-bg-lite); border: 1px solid var(--glass-stroke);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  border-radius: 999px; color: var(--fg); text-decoration: none; font-size: .9rem;
+  transition: border-color .2s ease, transform .15s ease;
+}
+.nav-link:hover { border-color: var(--accent); text-decoration: none; transform: translateY(-1px); }
+
+footer { color: var(--muted); font-size: .85rem; text-align: center; padding: 3rem 0 1rem; border-top: 1px solid var(--border); margin-top: 4rem; }
+
+.artist-header { border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 1.5rem; }
+.artist-header a { display: block; }
+.artist-banner { width: 100%; display: block; aspect-ratio: 1300/740; transition: opacity .2s ease; }
+.artist-header a:hover .artist-banner { opacity: .9; }
+
+.social-bar { display: flex; align-items: center; justify-content: center; gap: .8rem; margin: 1rem 0 .5rem; flex-wrap: wrap; }
+.social-icon {
+  display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px;
+  border-radius: 50%; background: var(--glass-bg-lite); border: 1px solid var(--glass-stroke);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  color: var(--muted); transition: border-color .2s ease, color .2s ease, transform .15s ease; text-decoration: none;
+}
+.social-icon:hover { border-color: var(--accent); color: var(--fg); text-decoration: none; transform: translateY(-1px); }
+.social-icon svg { width: 20px; height: 20px; fill: currentColor; }
+.social-catchall {
+  display: inline-flex; align-items: center; gap: .4rem; padding: .4rem .9rem;
+  background: var(--glass-bg-lite); border: 1px solid var(--glass-stroke);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  border-radius: 999px; color: var(--muted); font-size: .8rem; text-decoration: none;
+  transition: border-color .2s ease, color .2s ease;
+}
+.social-catchall:hover { border-color: var(--accent); color: var(--fg); text-decoration: none; }
+
+/* Tiny equalizer beside "Live Stats" — decorative nod to MusicUnderstanding visuals */
+.eq { display: inline-flex; align-items: flex-end; gap: 3px; height: .9em; margin-right: .1rem; vertical-align: -0.06em; }
+.eq i { display: block; width: 3px; border-radius: 2px; background: var(--accent); transform-origin: bottom; }
+.eq i:nth-child(1) { height: 45%; }
+.eq i:nth-child(2) { height: 100%; }
+.eq i:nth-child(3) { height: 65%; }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* anchor / skip-link targets must clear the fixed glass nav */
+html { scroll-padding-top: 5rem; }
+
+/* ── Motion — every animation is opt-in via no-preference; transform/opacity only ── */
+@media (prefers-reduced-motion: no-preference) {
+  /* Aurora drifts in once on load, then FREEZES. A perpetual drift kept every
+     backdrop-filter surface re-rasterizing its (moving) blurred backdrop forever
+     — real idle mobile GPU/battery cost. The one-shot ease-out + `forwards` holds
+     the settled frame, so compositor work drops to ~zero once the drift-in ends.
+     (will-change is intentionally omitted: transform animations are compositor-
+     promoted automatically, and a permanent will-change would pin 3 fullscreen
+     layers in memory long after the animation is done.) */
+  .backdrop i:nth-child(1) { animation: drift-1 34s cubic-bezier(.16,.6,.3,1) forwards; }
+  .backdrop i:nth-child(2) { animation: drift-2 40s cubic-bezier(.16,.6,.3,1) forwards; }
+  .backdrop i:nth-child(3) { animation: drift-3 46s cubic-bezier(.16,.6,.3,1) forwards; }
+  /* nav centers via transform, so its entrance animates opacity only */
+  .glass-nav { animation: settle .5s ease-out both; }
+  .hero { animation: rise .6s cubic-bezier(.2,.7,.3,1) both; }
+  .stat-card { animation: rise .55s cubic-bezier(.2,.7,.3,1) both; }
+  .stats-grid .stat-card:nth-child(2) { animation-delay: .06s; }
+  .stats-grid .stat-card:nth-child(3) { animation-delay: .12s; }
+  .stats-grid .stat-card:nth-child(4) { animation-delay: .18s; }
+  .stats-grid .stat-card:nth-child(5) { animation-delay: .24s; }
+  .release-card::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(105deg, transparent 42%, var(--sheen) 50%, transparent 58%);
+    transform: translateX(-130%); transition: transform .65s ease;
+  }
+  .release-card:hover::after { transform: translateX(130%); }
+  .eq i { animation: eq-bounce 1s ease-in-out infinite alternate; }
+  .eq i:nth-child(2) { animation-duration: .76s; }
+  .eq i:nth-child(3) { animation-duration: 1.18s; }
+}
+@keyframes drift-1 { to { transform: translate3d(9vw, 7vh, 0) scale(1.12); } }
+@keyframes drift-2 { to { transform: translate3d(-8vw, -6vh, 0) scale(1.18); } }
+@keyframes drift-3 { to { transform: translate3d(7vw, -8vh, 0) scale(1.08); } }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+@keyframes settle { from { opacity: 0; } }
+@keyframes eq-bounce { from { transform: scaleY(.4); } to { transform: scaleY(1); } }
+
+/* ── Material fallbacks & accessibility (required by Adopting Liquid Glass) ── */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root { --glass-bg-lite: rgba(24,24,28,0.92); --glass-regular: rgba(24,24,28,0.92); --glass-nav: rgba(24,24,28,0.92); --glass-panel: rgba(24,24,28,0.92); }
+  @media (prefers-color-scheme: light) {
+    :root { --glass-bg-lite: rgba(255,255,255,0.94); --glass-regular: rgba(255,255,255,0.92); --glass-nav: rgba(255,255,255,0.92); --glass-panel: rgba(255,255,255,0.92); }
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .backdrop { display: none; }
+  .glass-nav, .stat-card, .chart-container, .listener-map, .nav-btn, .hero-dots,
+  .release-card, .tracks, .meta span, .nav-link, .social-icon, .social-catchall {
+    background: var(--card);
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+}
+@media (prefers-contrast: more) {
+  :root { --glass-stroke: rgba(255,255,255,0.5); --glass-highlight: transparent; --dot: rgba(255,255,255,0.6); }
+  .glass-nav, .stat-card, .chart-container, .listener-map, .nav-btn, .hero-dots,
+  .release-card, .tracks, .meta span, .nav-link, .social-icon, .social-catchall {
+    background: var(--card);
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+  .gn-link { color: var(--fg); }
+  .stat-card::before, .stat-card::after { display: none; }
+  @media (prefers-color-scheme: light) {
+    :root { --glass-stroke: rgba(0,0,0,0.55); --dot: rgba(0,0,0,0.55); }
+  }
+}
+
+@media (max-width: 900px) {
+  .stats-grid { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+  .releases { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
+@media (max-width: 600px) {
+  main { padding: 4.6rem 1rem 4rem; }
+  h1 { font-size: 1.7rem; }
+  h2 { font-size: 1.25rem; }
+  .glass-nav { top: 10px; gap: .15rem; padding: .3rem .35rem; }
+  .gn-home { font-size: .92rem; padding: .3rem .55rem; }
+  .gn-link { font-size: .82rem; padding: .3rem .55rem; }
+  .gn-cta { font-size: .82rem; padding: .32rem .7rem; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .stat-card .value { font-size: 1.55rem; }
+  .chart-container canvas { max-height: 250px; }
+  .locations-grid { grid-template-columns: 1fr; gap: .5rem; }
+  .map-legend-bar { width: 90px; }
+  .hero-stage { min-height: 300px; }
+  .releases { grid-template-columns: repeat(2, 1fr); }
+  .social-icon { width: 36px; height: 36px; }
+  .social-icon svg { width: 18px; height: 18px; }
+  .listener-map { padding: .85rem .85rem .75rem; }
+}
+@media (max-width: 420px) {
+  .gn-cta { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-slide { transition: none; }
+  .release-card { transition: none; }
+  .listen-cta { transition: none; }
+  .dot { transition: none; }
+  .nav-btn, .gn-cta, .gn-link, .gn-home, .glass-nav, .social-icon, .nav-link { transition: none; }
+  .gn-indicator { transition: opacity .25s ease; }
+}

@@ -1,0 +1,462 @@
+---
+import fs from "node:fs";
+import Base from "@/layouts/Base.astro";
+import StatCard from "@/components/StatCard.astro";
+import playsRaw from "@data/plays.json";
+import historyRaw from "@data/history.csv?raw";
+import yearlyRaw from "@data/play_history_yearly.json";
+import { countries as geoCountries, cities as geoCities, combinedTotalPlays, countryCount } from "@/lib/geo";
+import { platformTotals } from "@/lib/totals";
+
+// Read at runtime, not via static import: Rollup resolves import specifiers
+// during `astro build`, so a missing playlists.json would fail the build
+// before any try/catch could run. `astro build` runs from the repo root
+// (same assumption as the public/flags read below).
+let playlistsData: any = { playlists: [] };
+try {
+  playlistsData = JSON.parse(fs.readFileSync("data/playlists.json", "utf8"));
+} catch (_) {}
+
+const data = playsRaw as any;
+
+const scTracks = data.soundcloud?.tracks || {};
+const spTracks = data.spotify?.tracks || {};
+const amTracks = data.apple_music?.tracks || {};
+
+// Per-platform totals + grand total via the shared helper (one fallback rule for
+// both pages). grandTotal stays the sum of the three displayed tiles, so the headline
+// can never drift from its own breakdown.
+const { scTotal, spTotal, amTotal, grandTotal } = platformTotals(data);
+
+const scFollowers = data.soundcloud?.followers || 0;
+const spMonthly = data.spotify?.monthly_listeners || 0;
+// Guard against a malformed timestamp, not just a missing one — an Invalid
+// Date would render literally here and feed NaN x-values to the chart below.
+const lastUpdatedDate = new Date(data.last_updated ?? NaN);
+const lastUpdatedValid = Number.isFinite(lastUpdatedDate.getTime());
+const lastUpdated = lastUpdatedValid ? lastUpdatedDate.toLocaleDateString("en-IE", { day: "numeric", month: "short", year: "numeric" }) : "unknown";
+
+function sortedTracks(tracks: Record<string, number>): [string, number][] {
+  return Object.entries(tracks).filter(([, v]) => v != null).sort((a, b) => (b[1] || 0) - (a[1] || 0));
+}
+
+const scSorted = sortedTracks(scTracks);
+const spSorted = sortedTracks(spTracks);
+const amSorted = sortedTracks(amTracks);
+
+// The three Top-Tracks sections are structurally identical (top-5, same markup),
+// differing only by platform label, source array, and accent colour — drive them
+// from one config so the markup lives in a single place.
+const topTrackSections: { platform: string; tracks: [string, number][]; color: string }[] = [
+  { platform: "SoundCloud", tracks: scSorted, color: "var(--accent-sc)" },
+  { platform: "Spotify", tracks: spSorted, color: "var(--accent-sp)" },
+  { platform: "Apple Music", tracks: amSorted, color: "var(--accent-am)" },
+];
+
+// ── Top Locations (flag display) — SoundCloud + Apple Music, summed in @/lib/geo ─
+const base = import.meta.env.BASE_URL;
+const fmtN = (n: number) => n.toLocaleString("en-IE");
+const flagSrc = (code: string) => `${base}flags/${code.toLowerCase()}.svg`;
+// Several Apple-Music-only countries in the merged geo (e.g. SG, DZ, MR, NA, CL,
+// MA, NG, PH, TH, VE) have no SVG in public/flags/. Build a build-time set of the
+// codes we actually ship so the country list can fall back to a blank placeholder
+// instead of emitting a broken <img> (mirrors the city list's `c.country` guard).
+// `astro build` runs from the repo root, so resolve public/flags/ cwd-relative.
+const flagCodes = new Set(
+  fs.readdirSync("public/flags")
+    .filter((f) => f.endsWith(".svg"))
+    .map((f) => f.slice(0, -4))
+);
+const hasFlag = (code: string) => flagCodes.has(code.toLowerCase());
+const playCount = (p: number, approx?: boolean) => `${approx ? "~" : ""}${fmtN(p)}`;
+// per-platform breakdown for the row's hover tooltip
+const breakdown = (sc: number, am: number) =>
+  [sc ? `SoundCloud ${fmtN(sc)}` : "", am ? `Apple Music ${fmtN(am)}` : ""].filter(Boolean).join(" + ");
+
+// ── Build-time chart series ───────────────────────────────────────────────
+// Parse history.csv, aggregate to one row per UTC day, and project a monotonic
+// cumulative series here at build time. The client receives only the final
+// point arrays as compact JSON — no CSV parsing / decoding in the browser.
+function parseCsvRows(raw: string): Record<string, string>[] {
+  const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(",").map((h) => h.trim());
+  return lines.slice(1).map((line) => {
+    const values = line.split(",").map((v) => v.trim());
+    const row: Record<string, string> = {};
+    headers.forEach((h, i) => { row[h] = values[i] ?? ""; });
+    return row;
+  });
+}
+function toInt(v: string | undefined): number {
+  const n = parseInt(String(v || "").replace(/[^\d]/g, ""), 10);
+  return Number.isFinite(n) ? n : 0;
+}
+// Zeros are treated as MISSING DATA (null): nulls + spanGaps:true draw one
+// smooth diagonal across the gap (e.g. AM stuck at 103 until the first AM4A
+// capture in April 2026) instead of a flat plateau then a vertical jump.
+// We intentionally do NOT force a monotonic (running-max) projection — a
+// legitimate downward restatement (e.g. a SoundCloud purge of invalid plays)
+// must show as a real decrease rather than being clamped up to the prior peak.
+function projectSeries(arr: number[]): (number | null)[] {
+  return arr.map((v) => (!v || v <= 0 ? null : v));
+}
+
+// ── Curated yearly spine (authoritative history) ──────────────────────────
+// history.csv only carries trustworthy cross-platform totals from 2026-05-08
+// on. Earlier 2026 rows undercount every platform: SoundCloud track discovery
+// was still incomplete, and the Spotify / Apple Music figures were being
+// backfilled, so they sit *below* the true year-end cumulative. For the run-up
+// before that we use data/play_history_yearly.json — per-year plays read from
+// the SoundCloud Insights "All Platforms" dashboard — as cumulative year-end
+// points. (Each platform's annual values sum to its all-time total.)
+const yearly = (yearlyRaw as any).annual_plays || {};
+const nowMs = lastUpdatedValid ? lastUpdatedDate.getTime() : Date.now();
+const nowYear = new Date(nowMs).getUTCFullYear();
+function spinePoints(annual: Record<string, number> = {}): { x: number; y: number }[] {
+  const years = Object.keys(annual).map(Number).filter((y) => Number.isFinite(y)).sort((a, b) => a - b);
+  let cum = 0;
+  const pts: { x: number; y: number }[] = [];
+  for (const y of years) {
+    cum += annual[String(y)] || 0;
+    if (y < nowYear) pts.push({ x: Date.UTC(y, 6, 2), y: cum }); // plot the year's cumulative at the year's MIDPOINT, not Dec 31 — otherwise it lands on the Jan-of-next-year gridline and Spotify/Apple Music (first year 2023) look like they start in Jan 2024 instead of 2023
+  }
+  return pts;
+}
+
+// ── Live tail from history.csv: one row per UTC day (last reading wins), but
+// only from the first all-platform-reliable capture onward. New weekly fetches
+// land after this date, so the tail keeps extending itself automatically.
+const FIRST_RELIABLE_TS = Date.UTC(2026, 4, 8); // 2026-05-08 — see note above
+const dayMap = new Map<string, Record<string, string>>();
+for (const r of parseCsvRows(historyRaw as string)) {
+  const d = new Date(r.timestamp);
+  if (isNaN(d.getTime()) || d.getTime() < FIRST_RELIABLE_TS) continue;
+  dayMap.set(d.toISOString().slice(0, 10), r); // last reading of the day wins
+}
+const dayKeys = [...dayMap.keys()].sort();
+const tailRows = dayKeys.map((k) => dayMap.get(k)!);
+const tailXs = dayKeys.map((k) => new Date(k + "T00:00:00Z").getTime());
+
+// ── Compose: yearly spine ++ live tail ++ current total (matches the tiles) ─
+// projectSeries keeps the no-monotonic-forcing rule: a real restatement (e.g.
+// the SoundCloud purge in the recent tail) still shows as a genuine dip.
+function buildSeries(annualKey: string, csvCol: string, currentTotal: number): { x: number; y: number | null }[] {
+  const pts = [
+    ...spinePoints(yearly[annualKey]),
+    ...tailXs.map((x, i) => ({ x, y: toInt(tailRows[i][csvCol]) })),
+    { x: nowMs, y: currentTotal },
+  ].sort((a, b) => a.x - b.x);
+  const ys = projectSeries(pts.map((p) => p.y));
+  return pts.map((p, i) => ({ x: p.x, y: ys[i] }));
+}
+const chartPoints = {
+  sc: buildSeries("soundcloud", "soundcloud_total_plays", scTotal),
+  sp: buildSeries("spotify", "spotify_total_streams", spTotal),
+  am: buildSeries("apple_music", "apple_music_total_plays", amTotal),
+};
+
+const playlists: any[] = playlistsData.playlists || [];
+const totalPlaylistReach = playlists.reduce((a: number, p: any) => a + (p.followers || 0), 0);
+// spotify_url originates from arbitrary public playlists (search results) and
+// can be null — only link to canonical Spotify playlist URLs.
+const playlistHref = (p: any): string | null => {
+  if (typeof p.spotify_url === "string" && p.spotify_url.startsWith("https://open.spotify.com/")) return p.spotify_url;
+  if (p.playlist_id) return `https://open.spotify.com/playlist/${p.playlist_id}`;
+  return null;
+};
+const playlistFetchedAt = playlistsData.fetched_at
+  ? new Date(playlistsData.fetched_at).toLocaleDateString("en-IE", { day: "numeric", month: "short", year: "numeric" })
+  : null;
+---
+<Base title="Poolpat &mdash; Play Stats" description="Live play count dashboard for Poolpat across SoundCloud, Spotify, and Apple Music." canonicalPath="/stats/">
+  <h1>Play Stats</h1>
+  <p class="muted">Updates every 24&ndash;48 hours from the SoundCloud Insights dashboard &middot; Last: {lastUpdated}</p>
+
+  <div class="stats-grid">
+    <StatCard label="Total Plays" value={grandTotal} sub="All platforms" />
+    <StatCard label="SoundCloud" value={scTotal} color="var(--accent-sc)" sub={`${scFollowers} followers`} />
+    <StatCard label="Spotify" value={spTotal} color="var(--accent-sp)" sub={`${spMonthly} monthly listeners`} />
+    <StatCard label="Apple Music" value={amTotal} color="var(--accent-am)" sub={`${data.apple_music?.total_shazams || 0} Shazams`} />
+    {totalPlaylistReach > 0 && (
+      <StatCard label="Playlist Reach" value={totalPlaylistReach} color="var(--accent-sp)" sub={`${playlists.length} playlists`} />
+    )}
+  </div>
+
+  <section class="section">
+    <h2>Play Count Trends</h2>
+    <div class="chart-container">
+      <canvas id="plays-chart" role="img" aria-label="Line chart showing play count trends over time for SoundCloud, Spotify, and Apple Music"></canvas>
+      <script id="chart-data" type="application/json" is:inline set:html={JSON.stringify(chartPoints).replace(/</g, "\\u003c")}></script>
+    </div>
+  </section>
+
+  <!-- Chart.js is bundled & tree-shaken by Astro (ESM import below). No CDN, no SRI, no window global. -->
+  <script>
+    // @ts-nocheck — bundled client chart code (chart.js + raw DOM access). Kept
+    // unchecked to match its prior inline status; it's plain runtime JS, not typed.
+    import { Chart, LineController, LineElement, PointElement, LogarithmicScale, TimeScale, Legend, Tooltip } from "chart.js";
+    import "chartjs-adapter-date-fns";
+
+    Chart.register(LineController, LineElement, PointElement, LogarithmicScale, TimeScale, Legend, Tooltip);
+
+    (async () => {
+      // Series are computed at build time (see frontmatter) and shipped as
+      // compact JSON — no client-side CSV parsing, aggregation, or decoding.
+      const el = document.getElementById("chart-data");
+      const canvas = document.getElementById("plays-chart");
+      const { sc, sp, am } = JSON.parse(el?.textContent || '{"sc":[],"sp":[],"am":[]}');
+
+      if (!sc.length && !sp.length && !am.length) {
+        const p = document.createElement("p");
+        p.className = "muted";
+        p.textContent = "Trend data is not available yet.";
+        canvas.replaceWith(p);
+        return;
+      }
+
+      // Gate the 1.2s draw-in on prefers-reduced-motion (mirrors the homepage
+      // carousel's matchMedia pattern), and only build the chart once it scrolls
+      // into view so Chart.js work isn't done for an off-screen canvas. Degrades
+      // gracefully: if IntersectionObserver is missing or the canvas is already
+      // visible, build immediately. `built` guards against a double-construct.
+      const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      let built = false;
+      const build = () => {
+        if (built) return;
+        built = true;
+        buildChart();
+      };
+
+      if ("IntersectionObserver" in window) {
+        const io = new IntersectionObserver((entries, obs) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting) {
+              obs.disconnect();
+              build();
+              break;
+            }
+          }
+        }, { rootMargin: "200px" });
+        io.observe(canvas);
+      } else {
+        build();
+      }
+
+      function buildChart() {
+      // Chart text/grid adapt to the colour scheme so the panel can share the
+      // light/dark Regular-glass tint of the stat tiles instead of being forced dark.
+      const mq = window.matchMedia("(prefers-color-scheme: dark)");
+      const palette = () => ({
+        txt: mq.matches ? "#f5f5f7" : "#1d1d1f",
+        mut: mq.matches ? "#98989d" : "#6e6e73",
+        grid: mq.matches ? "rgba(240,240,245,0.08)" : "rgba(0,0,0,0.07)",
+        tipBg: mq.matches ? "rgba(0,0,0,0.8)" : "rgba(255,255,255,0.92)",
+        tipBorder: mq.matches ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.12)",
+      });
+      let pal = palette();
+      const chart = new Chart(canvas, {
+        type: "line",
+        data: {
+          datasets: [
+            {
+              label: "SoundCloud",
+              data: sc,
+              borderColor: "#FF4000",
+              backgroundColor: "#FF4000",
+              fill: false,
+              tension: 0,
+              borderWidth: 2.5,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              pointHitRadius: 10,
+              spanGaps: true
+            },
+            {
+              label: "Spotify",
+              data: sp,
+              borderColor: "#1DB954",
+              backgroundColor: "#1DB954",
+              fill: false,
+              tension: 0,
+              borderWidth: 2.5,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              pointHitRadius: 10,
+              spanGaps: true
+            },
+            {
+              label: "Apple Music",
+              data: am,
+              borderColor: "#fa233b",
+              backgroundColor: "#fa233b",
+              fill: false,
+              tension: 0,
+              borderWidth: 2.5,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              pointHitRadius: 10,
+              spanGaps: true
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            // No in-chart title: the section h2 above the panel is the single heading.
+            // Default generateLabels stays — it injects fontColor from labels.color;
+            // a custom factory here once dropped it, drawing the legend text near-black.
+            legend: {
+              position: "top",
+              labels: {
+                color: pal.txt,
+                usePointStyle: true,
+                pointStyle: "circle",
+                boxWidth: 8,
+                boxHeight: 8,
+                padding: 16,
+                font: { size: 12, weight: "600" }
+              }
+            },
+            tooltip: {
+              backgroundColor: pal.tipBg,
+              titleColor: pal.txt,
+              bodyColor: pal.txt,
+              borderColor: pal.tipBorder,
+              borderWidth: 1,
+              padding: 12,
+              titleFont: { size: 14, weight: "bold" },
+              bodyFont: { size: 13 }
+            }
+          },
+          scales: {
+            x: {
+              type: "time",
+              time: {
+                unit: "month",
+                tooltipFormat: "d MMM yyyy",
+                displayFormats: { day: "d MMM", month: "MMM yyyy", year: "yyyy" }
+              },
+              ticks: { color: pal.mut, maxTicksLimit: 12, font: { size: 11 }, maxRotation: 0, autoSkip: true },
+              grid: { color: pal.grid }
+            },
+            y: {
+              type: "logarithmic",
+              min: 10,
+              ticks: {
+                color: pal.mut,
+                // Only label decade values to declutter the log axis
+                callback(value) {
+                  const log = Math.log10(value);
+                  if (Math.abs(log - Math.round(log)) > 1e-9) return null;
+                  if (value < 1000) return Math.round(value).toLocaleString();
+                  if (value < 1000000) return (value / 1000).toFixed(0) + "K";
+                  return (value / 1000000).toFixed(1) + "M";
+                }
+              },
+              grid: { color: pal.grid },
+              title: { display: true, text: "Cumulative Plays (log scale)", color: pal.mut, font: { size: 14, weight: "bold" } }
+            }
+          },
+          elements: { line: { tension: 0, borderWidth: 2.5 }, point: { radius: 3, hitRadius: 10 } },
+          animation: prefersReduced ? false : { duration: 1200, easing: "easeOutQuart" }
+        }
+      });
+      // Keep chart colours in sync if the OS scheme flips while viewing.
+      mq.addEventListener?.("change", () => {
+        pal = palette();
+        const o = chart.options;
+        o.plugins.legend.labels.color = pal.txt;
+        o.plugins.tooltip.backgroundColor = pal.tipBg;
+        o.plugins.tooltip.titleColor = pal.txt;
+        o.plugins.tooltip.bodyColor = pal.txt;
+        o.plugins.tooltip.borderColor = pal.tipBorder;
+        o.scales.x.ticks.color = pal.mut;
+        o.scales.x.grid.color = pal.grid;
+        o.scales.y.ticks.color = pal.mut;
+        o.scales.y.grid.color = pal.grid;
+        o.scales.y.title.color = pal.mut;
+        chart.update();
+      });
+      }
+    })();
+  </script>
+
+  <section class="section">
+    <h2>Top Locations &mdash; SoundCloud + Apple Music</h2>
+    <p class="muted" style="margin-bottom:1rem">Combined plays by listener location &middot; {fmtN(combinedTotalPlays)} all-time (SoundCloud + Apple Music) &middot; {countryCount} countries</p>
+    <div class="locations-grid">
+      <div class="location-col">
+        <h3>Cities</h3>
+        <ul class="tracks">
+          {geoCities.slice(0, 10).map((c, i) => (
+            <li class="track" title={breakdown(c.sc, c.am)}>
+              <span class="track-num">{i + 1}</span>
+              {c.country
+                ? <img class="flag" src={flagSrc(c.country)} alt="" width="24" height="18" loading="lazy" decoding="async" />
+                : <span class="flag" aria-hidden="true"></span>}
+              <span class="track-title">{c.name}</span>
+              <span class="track-duration" style="color:var(--accent-sc)">{playCount(c.plays, c.approx)}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div class="location-col">
+        <h3>Countries</h3>
+        <ul class="tracks">
+          {geoCountries.slice(0, 10).map((c, i) => (
+            <li class="track" title={breakdown(c.sc, c.am)}>
+              <span class="track-num">{i + 1}</span>
+              {hasFlag(c.code)
+                ? <img class="flag" src={flagSrc(c.code)} alt="" width="24" height="18" loading="lazy" decoding="async" />
+                : <span class="flag" aria-hidden="true"></span>}
+              <span class="track-title">{c.name}</span>
+              <span class="track-duration" style="color:var(--accent-sc)">{playCount(c.plays, c.approx)}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  {playlists.length > 0 && (
+    <section class="section">
+      <h2>Playlist Placements &mdash; Spotify</h2>
+      {playlistFetchedAt && <p class="muted" style="margin-bottom:1rem">Last checked: {playlistFetchedAt}</p>}
+      <ul class="tracks">
+        {playlists.slice(0, 20).map((p: any, i: number) => (
+          <li class="track">
+            <span class="track-num">{i + 1}</span>
+            {playlistHref(p)
+              ? <a class="track-title" href={playlistHref(p)} target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:none">{p.name || p.playlist_id}</a>
+              : <span class="track-title">{p.name || p.playlist_id}</span>}
+            <span class="track-duration" style="color:var(--accent-sp)">
+              {(p.followers || 0).toLocaleString("en-IE")} followers
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )}
+
+  {topTrackSections.map((sec) => (
+    <section class="section">
+      <h2>Top Tracks &mdash; {sec.platform}</h2>
+      <ul class="tracks">
+        {sec.tracks.slice(0, 5).map(([title, plays], i) => (
+          <li class="track">
+            <span class="track-num">{i + 1}</span>
+            <span class="track-title">{title}</span>
+            <span class="track-duration" style={`color:${sec.color}`}>{plays.toLocaleString("en-IE")}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  ))}
+
+  <nav class="nav-links" aria-label="Page navigation" style="margin-top:2rem">
+    <a class="nav-link" href={`${import.meta.env.BASE_URL}`}>&larr; Home</a>
+    <a class="nav-link" href={`${import.meta.env.BASE_URL}discography/`}>Discography</a>
+  </nav>
+</Base>

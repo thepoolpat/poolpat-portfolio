@@ -1,0 +1,113 @@
+name: Fetch Data (weekly)
+
+# Combined replacement for fetch-plays.yml + fetch-playlists.yml.
+# Runs both fetchers sequentially in one job to avoid the SPOTIFY_REFRESH_TOKEN
+# rotation race that hit when they were two separate workflows 30 min apart.
+
+on:
+  schedule:
+    - cron: "0 6 * * 0"   # Sundays 06:00 UTC
+  workflow_dispatch: {}
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: spotify-fetch
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pipeline/requirements.txt
+
+      # No secrets in env here: a compromised dependency's install hooks
+      # must not see GH_PAT (it can write repo secrets) or Spotify creds.
+      - name: Install dependencies
+        run: pip install -r pipeline/requirements.txt
+
+      # Secrets are step-scoped. Token rotation writes the new refresh token
+      # to $GITHUB_ENV *inside* this step; runtime $GITHUB_ENV values are not
+      # shadowed by the next step's env block (which doesn't set
+      # SPOTIFY_REFRESH_TOKEN anyway — playlists use client_credentials).
+      - name: Fetch play counts
+        id: fetch_plays
+        continue-on-error: true
+        env:
+          SPOTIFY_CLIENT_ID:     ${{ secrets.SPOTIFY_CLIENT_ID }}
+          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+          SPOTIFY_REFRESH_TOKEN: ${{ secrets.SPOTIFY_REFRESH_TOKEN }}
+          GH_TOKEN:              ${{ secrets.GH_PAT }}
+          # Alert issues use the default token (create_alert_issue prefers
+          # GITHUB_TOKEN), so GH_PAT only needs Secrets:write. gh secret set
+          # still uses GH_PAT — the gh CLI prefers GH_TOKEN over GITHUB_TOKEN.
+          GITHUB_TOKEN:          ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY:     ${{ github.repository }}
+          APPLE_MUSIC_TOKEN:     ${{ secrets.APPLE_MUSIC_TOKEN }}
+        run: python pipeline/fetch_plays.py
+
+      - name: Fetch playlist data
+        id: fetch_playlists
+        continue-on-error: true
+        env:
+          SPOTIFY_CLIENT_ID:     ${{ secrets.SPOTIFY_CLIENT_ID }}
+          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+          RAPIDAPI_KEY:          ${{ secrets.RAPIDAPI_KEY }}
+        run: python pipeline/fetch_playlists.py
+
+      # Only commit if at least one fetcher succeeded, and never commit a
+      # file that doesn't parse as JSON — a truncated plays.json pushed to
+      # main would poison the next run's monotonic baseline.
+      - name: Commit data updates
+        if: steps.fetch_plays.outcome == 'success' || steps.fetch_playlists.outcome == 'success'
+        run: |
+          python -c '
+          import json, pathlib, sys
+          for p in pathlib.Path("data").glob("*.json"):
+              try:
+                  json.loads(p.read_text())
+              except ValueError as e:
+                  sys.exit(f"::error::{p} is not valid JSON: {e}")
+          '
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          if git diff --cached --quiet; then
+            echo "no data changes to commit"
+          else
+            git commit -m "data: weekly update $(date -u +%Y-%m-%d)"
+            # main may have moved during the run (e.g. a Dependabot merge)
+            git pull --rebase origin main
+            git push
+          fi
+
+      - name: Run summary
+        if: always()
+        env:
+          PLAYS_OUTCOME: ${{ steps.fetch_plays.outcome }}
+          PLAYLISTS_OUTCOME: ${{ steps.fetch_playlists.outcome }}
+        run: |
+          echo "fetch_plays:     $PLAYS_OUTCOME"
+          echo "fetch_playlists: $PLAYLISTS_OUTCOME"
+          if [ "$PLAYS_OUTCOME" = "failure" ] && [ "$PLAYLISTS_OUTCOME" = "failure" ]; then
+            echo "::error::Both fetches failed — likely a credential issue (Spotify revoked?)"
+            exit 1
+          elif [ "$PLAYS_OUTCOME" = "failure" ] || [ "$PLAYLISTS_OUTCOME" = "failure" ]; then
+            echo "::warning::Partial failure — plays=$PLAYS_OUTCOME playlists=$PLAYLISTS_OUTCOME"
+          else
+            echo "Both fetches succeeded"
+          fi

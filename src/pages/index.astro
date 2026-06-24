@@ -1,0 +1,255 @@
+---
+import Base from "@/layouts/Base.astro";
+import StatCard from "@/components/StatCard.astro";
+import ReleaseCard from "@/components/ReleaseCard.astro";
+import ReleaseMeta from "@/components/ReleaseMeta.astro";
+import { getCollection } from "astro:content";
+import playsRaw from "@data/plays.json";
+import worldGeo from "@data/world-geo.json";
+import { countries as geoCountries, combinedTotalPlays, countryCount } from "@/lib/geo";
+import { platformTotals } from "@/lib/totals";
+import { link, hashCampaign } from "@affiliate";
+
+const data = playsRaw as any;
+const base = import.meta.env.BASE_URL;
+const site = import.meta.env.SITE ?? "https://thepoolpat.github.io";
+const art = (r: any) => `${base}${r.artwork}`;
+const releases = (await getCollection("releases")).map((e) => e.data).sort((a, b) => a.order - b.order);
+const { scTotal, spTotal, amTotal, grandTotal } = platformTotals(data);
+
+// ── Listener map (SoundCloud + Apple Music) ────────────────────────────────
+// Build-time choropleth. SoundCloud and Apple Music are the only platforms that
+// expose a per-country breakdown; their plays are summed per country in
+// @/lib/geo. Geometry is pre-projected to static SVG paths in data/world-geo.json
+// (see dev/gen_world_geo.mjs); we join each shape's ISO alpha-2 `code` to the
+// merged data and compute an orange fill at build time — no client JS, CSP-safe.
+const fmt = (n: number) => n.toLocaleString("en-IE");
+const mapShapes = (worldGeo as any).countries as { code: string | null; name: string; d: string }[];
+const infoByCode = new Map(geoCountries.map((c) => [c.code, c]));
+// Ireland (~14,846 combined) so dominates that a linear ramp would wash everyone
+// else to nothing — map LOG(plays) to the orange's opacity so small markets
+// (incl. the single-play African / South American countries) stay visible.
+// Clamp plays to >= 1 before log (log(0) = -Infinity would NaN every fill),
+// and short-circuit a degenerate single-value range (0/0 = NaN).
+const logPlays = geoCountries.map((c) => Math.log(Math.max(1, c.plays)));
+const logMin = Math.min(...logPlays);
+const logMax = Math.max(...logPlays);
+function mapFill(code: string | null): string {
+  const info = code ? infoByCode.get(code) : undefined;
+  if (!info) return "var(--map-empty)";
+  const t = logMax === logMin
+    ? 1
+    : (Math.log(Math.max(1, info.plays)) - logMin) / (logMax - logMin); // 0..1
+  return `rgba(255,85,0,${(0.18 + t * 0.82).toFixed(3)})`; // --accent-sc, dim → vivid
+}
+const mapAria = `World map of where Poolpat is heard on SoundCloud and Apple Music, ${countryCount} countries shaded by combined all-time play count. Highest: ${geoCountries.slice(0, 5).map((c) => `${c.name} ${fmt(c.plays)}`).join(", ")}.`;
+
+const listenAmHref = link({
+  storefront: "ie",
+  type: "artist",
+  slug: "poolpat",
+  id: "1716939831",
+  campaign: hashCampaign("web-portfolio-listen-am"),
+});
+
+const artistJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "MusicGroup",
+  "@id": `${site}${base}#artist`,
+  name: "Poolpat",
+  url: `${site}${base}`,
+  image: `${site}${base}artwork/artist-banner.png`,
+  genre: "Trip-Hop",
+  foundingLocation: { "@type": "Place", name: "Cork, Ireland" },
+  sameAs: [
+    "https://music.apple.com/ie/artist/poolpat/1716939831",
+    "https://open.spotify.com/artist/4rr3o9anpUXitNXo0W4uX7",
+    "https://soundcloud.com/poolpat",
+    "https://www.instagram.com/poolpat_shanakee/",
+    "https://www.youtube.com/@Poolpat",
+    "https://www.tiktok.com/@poolpat_shanakee",
+    "https://ffm.bio/poolpat",
+  ],
+};
+---
+<Base
+  title="Poolpat — Cork Trip-Hop"
+  description="Poolpat — Cork trip-hop artist. Live play stats, full discography, and liner notes across SoundCloud, Spotify, and Apple Music."
+  structuredData={artistJsonLd}
+>
+
+  <!-- Artist Header -->
+  <header class="artist-header">
+    <a href="https://music.lnk.to/b6DLXM" target="_blank" rel="noopener noreferrer" aria-label="Poolpat — listen now on Apple Music">
+      <img class="artist-banner" src={`${base}artwork/artist-banner.png`} alt="Poolpat — Cork trip-hop artist" fetchpriority="high" loading="eager" decoding="async" />
+    </a>
+  </header>
+
+    <!-- Social Icons -->
+    <nav class="social-bar" aria-label="Social platforms">
+      <a class="social-icon" href="https://www.instagram.com/poolpat_shanakee/" target="_blank" rel="noopener noreferrer" aria-label="Poolpat on Instagram" title="Instagram">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.17.054 1.97.24 2.43.403a4.088 4.088 0 0 1 1.523.99 4.088 4.088 0 0 1 .99 1.524c.163.46.349 1.26.403 2.43.058 1.265.07 1.645.07 4.849s-.012 3.584-.07 4.849c-.054 1.17-.24 1.97-.403 2.43a4.088 4.088 0 0 1-.99 1.524 4.088 4.088 0 0 1-1.524.99c-.46.163-1.26.349-2.43.403-1.265.058-1.645.07-4.849.07s-3.584-.012-4.849-.07c-1.17-.054-1.97-.24-2.43-.403a4.088 4.088 0 0 1-1.524-.99 4.088 4.088 0 0 1-.99-1.524c-.163-.46-.349-1.26-.403-2.43C2.175 15.584 2.163 15.204 2.163 12s.012-3.584.07-4.849c.054-1.17.24-1.97.403-2.43a4.088 4.088 0 0 1 .99-1.524A4.088 4.088 0 0 1 5.15 2.636c.46-.163 1.26-.349 2.43-.403C8.845 2.175 9.225 2.163 12 2.163M12 0C8.741 0 8.333.014 7.053.072 5.775.131 4.902.333 4.14.63a5.882 5.882 0 0 0-2.126 1.384A5.882 5.882 0 0 0 .63 4.14C.333 4.902.131 5.775.072 7.053.014 8.333 0 8.741 0 12s.014 3.667.072 4.947c.059 1.278.261 2.151.558 2.913a5.882 5.882 0 0 0 1.384 2.126A5.882 5.882 0 0 0 4.14 23.37c.762.297 1.635.499 2.913.558C8.333 23.986 8.741 24 12 24s3.667-.014 4.947-.072c1.278-.059 2.151-.261 2.913-.558a5.882 5.882 0 0 0 2.126-1.384 5.882 5.882 0 0 0 1.384-2.126c.297-.762.499-1.635.558-2.913.058-1.28.072-1.688.072-4.947s-.014-3.667-.072-4.947c-.059-1.278-.261-2.151-.558-2.913a5.882 5.882 0 0 0-1.384-2.126A5.882 5.882 0 0 0 19.86.63c-.762-.297-1.635-.499-2.913-.558C15.667.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>
+      </a>
+      <a class="social-icon" href="https://www.youtube.com/@Poolpat" target="_blank" rel="noopener noreferrer" aria-label="Poolpat on YouTube" title="YouTube">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+      </a>
+      <a class="social-icon" href="https://www.tiktok.com/@poolpat_shanakee" target="_blank" rel="noopener noreferrer" aria-label="Poolpat on TikTok" title="TikTok">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
+      </a>
+      <a class="social-catchall" href="https://ffm.bio/poolpat" target="_blank" rel="noopener noreferrer" aria-label="All Poolpat links on FFM">Stream &amp; Connect</a>
+    </nav>
+
+  <!-- Hero Carousel -->
+  <section class="hero" role="region" aria-roledescription="carousel" aria-label="Featured releases">
+    <!-- Inactive slides are hidden with opacity only — `inert` keeps their
+         links out of the tab order and the accessibility tree. -->
+    <div class="hero-stage" id="hero-stage">
+      {releases.map((r, i) => (
+        <div class={`hero-slide${i === 0 ? " active" : ""}`} data-idx={i} inert={i !== 0}>
+          <div class="artwork">
+            <img src={i === 0 ? art(r) : undefined} data-src={i === 0 ? undefined : art(r)} alt={`${r.title} cover artwork`} width="1200" height="1200" loading={i === 0 ? "eager" : "lazy"} fetchpriority={i === 0 ? "high" : undefined} decoding="async" />
+          </div>
+          <h1>{r.title}</h1>
+          <p class="tagline">{r.tagline}</p>
+          <ReleaseMeta release={r} />
+        </div>
+      ))}
+    </div>
+    <div class="hero-controls">
+      <button class="nav-btn" id="prev-btn" aria-label="Previous release">&lsaquo;</button>
+      <div class="hero-dots" id="hero-dots">
+        {releases.map((r, i) => (
+          <button class={`dot${i === 0 ? " active" : ""}`} data-idx={i} aria-label={`Show ${r.title}`} title={r.title}></button>
+        ))}
+      </div>
+      <button class="nav-btn" id="next-btn" aria-label="Next release">&rsaquo;</button>
+    </div>
+    <div class="rotation-status" id="rotation-status" aria-live="polite">Auto-rotating</div>
+  </section>
+
+  <!-- Quick Stats -->
+  <section class="section">
+    <h2><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span> Live Stats</h2>
+    <div class="stats-grid">
+      <StatCard label="Total Plays" value={grandTotal} sub="All platforms" />
+      <StatCard label="SoundCloud" value={scTotal} color="var(--accent-sc)" />
+      <StatCard label="Spotify" value={spTotal} color="var(--accent-sp)" />
+      <StatCard label="Apple Music" value={amTotal} color="var(--accent-am)" />
+    </div>
+
+    <!-- Listener map (SoundCloud + Apple Music) — build-time choropleth -->
+    <figure class="listener-map">
+      <figcaption class="map-title">Where Poolpat is heard <span class="muted">&middot; SoundCloud + Apple Music &middot; all-time</span></figcaption>
+      <svg viewBox={(worldGeo as any).viewBox} role="img" aria-label={mapAria} preserveAspectRatio="xMidYMid meet">
+        {mapShapes.map((s) => {
+          const info = s.code ? infoByCode.get(s.code) : undefined;
+          return (
+            <path d={s.d} fill={mapFill(s.code)} stroke="var(--map-stroke)" stroke-width="0.4" class={info ? "land has-data" : "land"}>
+              {info && <title>{`${info.name} — ${info.approx ? "~" : ""}${fmt(info.plays)} plays`}</title>}
+            </path>
+          );
+        })}
+      </svg>
+      <div class="map-caption">
+        <span class="map-legend" aria-hidden="true">
+          <span class="map-legend-label">Fewer</span>
+          <span class="map-legend-bar"></span>
+          <span class="map-legend-label">More</span>
+        </span>
+        <span class="muted">{countryCount} countries &middot; {fmt(combinedTotalPlays)} all-time plays &middot; hover for counts</span>
+      </div>
+    </figure>
+
+    <p class="muted" style="text-align:center;margin-top:.5rem">
+      <a href={`${import.meta.env.BASE_URL}stats/`}>Full stats dashboard &rarr;</a>
+    </p>
+  </section>
+
+  <!-- Discography Preview -->
+  <section class="section">
+    <h2>Discography</h2>
+    <div class="releases">
+      {releases.slice(0, 4).map((r) => <ReleaseCard release={r} />)}
+    </div>
+    <p class="muted" style="text-align:center;margin-top:.5rem">
+      <a href={`${import.meta.env.BASE_URL}discography/`}>View full discography &rarr;</a>
+    </p>
+  </section>
+
+  <!-- Listen Links -->
+  <section class="section">
+    <h2>Listen</h2>
+    <nav class="nav-links" aria-label="Listen on" style="justify-content:center">
+      <a class="nav-link" href={listenAmHref} target="_blank" rel="noopener noreferrer" style="border-color:var(--accent-am)">Apple Music</a>
+      <a class="nav-link" href="https://open.spotify.com/artist/4rr3o9anpUXitNXo0W4uX7" target="_blank" rel="noopener noreferrer" style="border-color:var(--accent-sp)">Spotify</a>
+      <a class="nav-link" href="https://soundcloud.com/poolpat" target="_blank" rel="noopener noreferrer" style="border-color:var(--accent-sc)">SoundCloud</a>
+      <a class="nav-link" href="https://ffm.bio/poolpat" target="_blank" rel="noopener noreferrer">Stream &amp; Connect</a>
+    </nav>
+  </section>
+
+  <!-- Carousel Script -->
+  <script>
+    const slides = document.querySelectorAll<HTMLElement>(".hero-slide");
+    const dots = document.querySelectorAll<HTMLElement>(".dot");
+    const status = document.getElementById("rotation-status")!;
+    const ROTATE_MS = 8000;
+    let current = 0;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    let paused = false;
+
+    function loadSlideImg(i: number) {
+      const img = slides[(i + slides.length) % slides.length]?.querySelector("img");
+      if (img && img.dataset.src) { img.src = img.dataset.src; delete img.dataset.src; }
+    }
+
+    function showSlide(i: number) {
+      current = (i + slides.length) % slides.length;
+      loadSlideImg(current);
+      loadSlideImg(current + 1);
+      slides.forEach((s, idx) => {
+        s.classList.toggle("active", idx === current);
+        s.toggleAttribute("inert", idx !== current);
+      });
+      dots.forEach((d, idx) => {
+        d.classList.toggle("active", idx === current);
+        d.setAttribute("aria-current", idx === current ? "true" : "false");
+      });
+      const title = slides[current].querySelector("h1")?.textContent ?? "";
+      status.textContent = paused
+        ? `Paused on ${title}`
+        : `Auto-rotating \u00b7 ${current + 1} of ${slides.length}`;
+    }
+
+    function next() { showSlide(current + 1); }
+    function prev() { showSlide(current - 1); }
+    function restartTimer() {
+      if (timer) clearInterval(timer);
+      if (!paused) timer = setInterval(next, ROTATE_MS);
+    }
+
+    document.getElementById("next-btn")!.addEventListener("click", () => { next(); restartTimer(); });
+    document.getElementById("prev-btn")!.addEventListener("click", () => { prev(); restartTimer(); });
+    dots.forEach(d => d.addEventListener("click", (e) => {
+      showSlide(parseInt((e.currentTarget as HTMLElement).dataset.idx!, 10));
+      restartTimer();
+    }));
+
+    const hero = document.querySelector(".hero")!;
+    // mouseleave must not re-enable auto-rotation for reduced-motion users.
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    hero.addEventListener("mouseenter", () => { paused = true; showSlide(current); restartTimer(); });
+    hero.addEventListener("mouseleave", () => { paused = reducedMotion; showSlide(current); restartTimer(); });
+    hero.addEventListener("focusin", () => { paused = true; showSlide(current); restartTimer(); });
+    hero.addEventListener("focusout", () => { paused = reducedMotion; showSlide(current); restartTimer(); });
+
+    loadSlideImg(0);
+    loadSlideImg(1);
+
+    if (reducedMotion) {
+      paused = true;
+      showSlide(0);
+    } else {
+      restartTimer();
+    }
+  </script>
+</Base>

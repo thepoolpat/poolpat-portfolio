@@ -1,0 +1,31 @@
+{
+  "_comment": "Curated per-year play counts read manually from the SoundCloud Insights 'All Platforms' dashboard (one bar per year; value taken from each bar's tooltip) on 2026-06-16 (refreshed from the live dashboard; first captured 2026-05-29). This is the AUTHORITATIVE historical spine for the /stats 'Play Count History' chart; the live recent detail (2026-05-08 onward) comes from data/history.csv. Each platform's annual values sum exactly to its all-time total (SoundCloud 28588, Spotify 19779, Apple Music 4111); the latest deltas land in the current (2026) bar, leaving completed years 2022-2025 fixed. SoundCloud has data since 2016, but 2016-2022 is small and lumped into the '2022' entry (1032 = cumulative plays through end of 2022). Spotify and Apple Music insights only exist since 2023. stats.astro turns annual_plays into cumulative year-end points for completed years.",
+  "source": "SoundCloud Insights — All Platforms · All Time · per-year (PLAYS)",
+  "captured": "2026-06-16",
+  "all_time_totals": {
+    "soundcloud": 28588,
+    "spotify": 19779,
+    "apple_music": 4111
+  },
+  "annual_plays": {
+    "soundcloud": {
+      "2022": 1032,
+      "2023": 4809,
+      "2024": 19577,
+      "2025": 2784,
+      "2026": 386
+    },
+    "spotify": {
+      "2023": 703,
+      "2024": 14043,
+      "2025": 3742,
+      "2026": 1291
+    },
+    "apple_music": {
+      "2023": 361,
+      "2024": 2694,
+      "2025": 474,
+      "2026": 582
+    }
+  }
+}

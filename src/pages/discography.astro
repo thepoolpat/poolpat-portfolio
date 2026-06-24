@@ -1,0 +1,14 @@
+---
+import Base from "@/layouts/Base.astro";
+import ReleaseCard from "@/components/ReleaseCard.astro";
+import { getCollection } from "astro:content";
+const releases = (await getCollection("releases")).map((e) => e.data).sort((a, b) => a.order - b.order);
+---
+<Base title="Poolpat — Discography" description="Full discography for Poolpat — every release across Apple Music, SoundCloud, and Spotify." canonicalPath="/discography/">
+  <h1>Discography</h1>
+  <p class="tagline">Every release. Cork trip-hop, 2023–present.</p>
+
+  <div class="releases">
+    {releases.map((r) => <ReleaseCard release={r} showReleaseDate showCharts />)}
+  </div>
+</Base>
