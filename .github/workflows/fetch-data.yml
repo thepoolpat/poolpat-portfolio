@@ -58,6 +58,10 @@ jobs:
           GITHUB_TOKEN:          ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY:     ${{ github.repository }}
           APPLE_MUSIC_TOKEN:     ${{ secrets.APPLE_MUSIC_TOKEN }}
+          # Optional: pin a SoundCloud client_id to skip the fragile JS-bundle
+          # scrape. Empty when the secret is unset — the resolver then falls
+          # back to the on-disk cache, then a live scrape.
+          SOUNDCLOUD_CLIENT_ID:  ${{ secrets.SOUNDCLOUD_CLIENT_ID }}
         run: python pipeline/fetch_plays.py
 
       - name: Fetch playlist data

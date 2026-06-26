@@ -821,5 +821,170 @@ class TestLoadExistingData(unittest.TestCase):
             fetch_plays.load_existing_data()
 
 
+# ─── SoundCloud client_id resolution (env → cache → scrape) ──────────────────
+
+class TestResolveSoundcloudClientId(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+        from pathlib import Path
+        self._dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._dir.cleanup)
+        self.state = Path(self._dir.name) / ".sc_state.json"
+        p = patch.object(fetch_plays, "SC_STATE", self.state)
+        p.start()
+        self.addCleanup(p.stop)
+
+    @patch.dict(os.environ, {"SOUNDCLOUD_CLIENT_ID": "env_cid"}, clear=True)
+    @patch("fetch_plays._get_soundcloud_client_id")
+    def test_env_override_skips_cache_and_scrape(self, mock_scrape):
+        self.state.write_text('{"client_id": "cached_cid"}')  # present but ignored
+        cid, source = fetch_plays.resolve_soundcloud_client_id()
+        self.assertEqual((cid, source), ("env_cid", "env"))
+        mock_scrape.assert_not_called()
+
+    @patch.dict(os.environ, {}, clear=True)
+    @patch("fetch_plays._get_soundcloud_client_id")
+    def test_cache_used_before_scrape(self, mock_scrape):
+        self.state.write_text('{"client_id": "cached_cid"}')
+        cid, source = fetch_plays.resolve_soundcloud_client_id()
+        self.assertEqual((cid, source), ("cached_cid", "cache"))
+        mock_scrape.assert_not_called()
+
+    @patch.dict(os.environ, {}, clear=True)
+    @patch("fetch_plays._get_soundcloud_client_id", return_value="scraped_cid")
+    def test_falls_back_to_scrape_when_no_env_or_cache(self, mock_scrape):
+        cid, source = fetch_plays.resolve_soundcloud_client_id()
+        self.assertEqual((cid, source), ("scraped_cid", "scrape"))
+        mock_scrape.assert_called_once()
+
+    @patch.dict(os.environ, {}, clear=True)
+    @patch("fetch_plays._get_soundcloud_client_id", return_value="scraped_cid")
+    def test_corrupt_cache_falls_back_to_scrape(self, mock_scrape):
+        self.state.write_text("{not valid json")
+        cid, source = fetch_plays.resolve_soundcloud_client_id()
+        self.assertEqual((cid, source), ("scraped_cid", "scrape"))
+
+    def test_save_then_load_round_trips(self):
+        fetch_plays._save_sc_client_id_cache("abc123")
+        self.assertEqual(fetch_plays._load_sc_client_id_cache(), "abc123")
+
+    def test_save_ignores_non_string_id(self):
+        fetch_plays._save_sc_client_id_cache(MagicMock())  # e.g. a test mock
+        self.assertFalse(self.state.exists())
+        self.assertIsNone(fetch_plays._load_sc_client_id_cache())
+
+
+class TestSoundcloudClientIdCacheInOrchestration(unittest.TestCase):
+    @patch("fetch_plays._save_sc_client_id_cache")
+    @patch("fetch_plays.fetch_soundcloud_profile", return_value={})
+    @patch("fetch_plays.fetch_soundcloud_plays_v2", return_value={"track_a": 100})
+    @patch("fetch_plays.fetch_soundcloud_rss", return_value=[])
+    @patch("fetch_plays.resolve_soundcloud_client_id", return_value=("good_cid", "scrape"))
+    def test_working_id_cached_on_success(self, _resolve, _rss, _v2, _profile, mock_save):
+        fetch_plays.fetch_soundcloud_all({"tracks": {}, "total_plays": 0})
+        mock_save.assert_called_once_with("good_cid")
+
+    @patch("fetch_plays._save_sc_client_id_cache")
+    @patch("fetch_plays._get_soundcloud_client_id", return_value="fresh_cid")
+    @patch("fetch_plays.fetch_soundcloud_profile", return_value={})
+    @patch("fetch_plays.fetch_soundcloud_plays_v2")
+    @patch("fetch_plays.fetch_soundcloud_rss", return_value=[])
+    @patch("fetch_plays.resolve_soundcloud_client_id", return_value=("stale_cached", "cache"))
+    def test_stale_cached_id_triggers_rescrape(self, _resolve, _rss, mock_v2, _profile,
+                                               mock_scrape, _save):
+        """A cached id that returns no plays must trigger one fresh scrape + retry."""
+        mock_v2.side_effect = [{}, {"track_a": 500}]  # cache id fails, fresh id works
+        sc_data, _, got = fetch_plays.fetch_soundcloud_all({"tracks": {}, "total_plays": 0})
+        self.assertTrue(got)
+        mock_scrape.assert_called_once()
+        self.assertEqual(sc_data["tracks"]["track_a"], 500)
+        # Retry re-fetches plays AND profile with the fresh id (2 calls each).
+        self.assertEqual(mock_v2.call_count, 2)
+        self.assertEqual(_profile.call_count, 2)
+        # The cached id persisted is the freshly-scraped one, not the stale cache hit.
+        _save.assert_called_once_with("fresh_cid")
+
+    @patch("fetch_plays._get_soundcloud_client_id")
+    @patch("fetch_plays.fetch_soundcloud_profile", return_value={})
+    @patch("fetch_plays.fetch_soundcloud_plays_v2", return_value={})
+    @patch("fetch_plays.fetch_soundcloud_rss", return_value=[])
+    @patch("fetch_plays.resolve_soundcloud_client_id", return_value=("scraped", "scrape"))
+    def test_scrape_source_miss_does_not_retry(self, _resolve, _rss, mock_v2, _profile,
+                                               mock_rescrape):
+        """If the id already came from a live scrape, a miss shouldn't re-scrape again."""
+        fetch_plays.fetch_soundcloud_all({"tracks": {"a": 10}, "total_plays": 10})
+        mock_v2.assert_called_once()
+        mock_rescrape.assert_not_called()
+
+
+# ─── SoundCloud staleness signal ─────────────────────────────────────────────
+
+class TestSoundcloudStaleness(unittest.TestCase):
+    def _now(self):
+        from datetime import datetime, timezone
+        return datetime(2026, 6, 26, tzinfo=timezone.utc)
+
+    def test_is_stale_true_for_old_timestamp(self):
+        from datetime import timedelta
+        now = self._now()
+        old = (now - timedelta(days=fetch_plays.STALE_AFTER_DAYS + 5)).isoformat()
+        self.assertTrue(fetch_plays._is_stale(old, now))
+
+    def test_is_stale_false_for_recent_timestamp(self):
+        from datetime import timedelta
+        now = self._now()
+        recent = (now - timedelta(days=3)).isoformat()
+        self.assertFalse(fetch_plays._is_stale(recent, now))
+
+    def test_is_stale_false_for_missing_or_unparseable(self):
+        now = self._now()
+        self.assertFalse(fetch_plays._is_stale(None, now))
+        self.assertFalse(fetch_plays._is_stale("", now))
+        self.assertFalse(fetch_plays._is_stale("not-a-date", now))
+
+    def test_is_stale_treats_naive_timestamp_as_utc(self):
+        from datetime import timedelta
+        now = self._now()
+        naive_old = (now.replace(tzinfo=None) - timedelta(days=40)).isoformat()
+        self.assertTrue(fetch_plays._is_stale(naive_old, now))
+
+    @patch("fetch_plays.fetch_soundcloud_profile", return_value={})
+    @patch("fetch_plays.fetch_soundcloud_plays_v2", return_value={})
+    @patch("fetch_plays.fetch_soundcloud_rss", return_value=[])
+    @patch("fetch_plays.resolve_soundcloud_client_id", return_value=(None, "scrape"))
+    def test_preserved_stale_data_emits_warning(self, _resolve, _rss, _v2, _profile):
+        import io
+        import contextlib
+        from datetime import datetime, timezone, timedelta
+        old = (datetime.now(timezone.utc) - timedelta(days=40)).isoformat()
+        existing = {"tracks": {"a": 100}, "total_plays": 100,
+                    "last_successful_fetch": old}
+        buf = io.StringIO()
+        with contextlib.redirect_stderr(buf):
+            sc_data, _, got = fetch_plays.fetch_soundcloud_all(existing)
+        self.assertFalse(got)
+        self.assertEqual(sc_data["fetch_status"], "api_failed_preserved")
+        self.assertIn("stale", buf.getvalue().lower())
+
+    @patch("fetch_plays._save_sc_client_id_cache")
+    @patch("fetch_plays.fetch_soundcloud_profile", return_value={})
+    @patch("fetch_plays.fetch_soundcloud_plays_v2", return_value={"a": 200})
+    @patch("fetch_plays.fetch_soundcloud_rss", return_value=[])
+    @patch("fetch_plays.resolve_soundcloud_client_id", return_value=("cid", "scrape"))
+    def test_successful_fetch_is_not_stale(self, _resolve, _rss, _v2, _profile, _save):
+        import io
+        import contextlib
+        from datetime import datetime, timezone, timedelta
+        old = (datetime.now(timezone.utc) - timedelta(days=40)).isoformat()
+        existing = {"tracks": {"a": 100}, "total_plays": 100,
+                    "last_successful_fetch": old}
+        buf = io.StringIO()
+        with contextlib.redirect_stderr(buf):
+            _sc, _, got = fetch_plays.fetch_soundcloud_all(existing)
+        # A fresh success stamps last_successful_fetch=now, so no stale warning.
+        self.assertTrue(got)
+        self.assertNotIn("stale", buf.getvalue().lower())
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -24,6 +24,10 @@ DATA_DIR = _PIPELINE_DIR.parent / "data"
 PLAYS_JSON = DATA_DIR / "plays.json"
 HISTORY_CSV = DATA_DIR / "history.csv"
 FAIL_TRACKER = DATA_DIR / ".fetch_failures.json"
+# Cache of the last-working SoundCloud client_id. The id is public (scraped from
+# SoundCloud's JS bundles) so committing it is harmless; persisting it lets a
+# fresh CI checkout skip the fragile bundle scrape and reuse a known-good id.
+SC_STATE = DATA_DIR / ".sc_state.json"
 
 SOUNDCLOUD_URL = "https://soundcloud.com/poolpat"
 SOUNDCLOUD_USER_ID = 3265651
@@ -41,6 +45,7 @@ HEADERS = {
 }
 
 ALERT_THRESHOLD = 3  # consecutive failures before creating a GitHub Issue
+STALE_AFTER_DAYS = 21  # warn when served SoundCloud data hasn't refreshed in this long
 
 
 # ─── Monotonic helpers ───────────────────────────────────────────────────────
@@ -159,6 +164,59 @@ def _get_soundcloud_client_id() -> str | None:
     return None
 
 
+def _load_sc_client_id_cache() -> str | None:
+    """Return the last-working client_id from disk, or None if absent/unreadable.
+    A corrupt cache must never kill the fetch — we just fall through to a scrape."""
+    try:
+        if SC_STATE.exists():
+            with open(SC_STATE) as f:
+                cid = json.load(f).get("client_id")
+                return cid if isinstance(cid, str) and cid else None
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"  client_id cache unreadable ({e}), will scrape", file=sys.stderr)
+    return None
+
+
+def _save_sc_client_id_cache(client_id) -> None:
+    """Persist a known-good client_id. Silently no-ops on a non-str (e.g. a test
+    mock) or a write error — the cache is an optimization, never load-bearing."""
+    if not isinstance(client_id, str) or not client_id:
+        return
+    try:
+        _atomic_write_json(SC_STATE, {"client_id": client_id})
+    except OSError as e:
+        print(f"  client_id cache write failed ({e})", file=sys.stderr)
+
+
+def resolve_soundcloud_client_id() -> tuple[str | None, str]:
+    """Resolve a client_id, preferring cheap/robust sources over the fragile scrape.
+
+    Order: SOUNDCLOUD_CLIENT_ID env override → on-disk cache → live JS-bundle
+    scrape. Returns (client_id, source) where source is 'env' | 'cache' | 'scrape'
+    so the caller can re-scrape if a stale cached/env id stops working."""
+    env_cid = os.environ.get("SOUNDCLOUD_CLIENT_ID", "").strip()
+    if env_cid:
+        return env_cid, "env"
+    cached = _load_sc_client_id_cache()
+    if cached:
+        return cached, "cache"
+    return _get_soundcloud_client_id(), "scrape"
+
+
+def _is_stale(iso_timestamp, now: datetime) -> bool:
+    """True if iso_timestamp is older than STALE_AFTER_DAYS. Unparseable or missing
+    timestamps are treated as NOT stale (we don't warn on data we can't date)."""
+    if not iso_timestamp or not isinstance(iso_timestamp, str):
+        return False
+    try:
+        last = datetime.fromisoformat(iso_timestamp)
+    except ValueError:
+        return False
+    if last.tzinfo is None:
+        last = last.replace(tzinfo=timezone.utc)
+    return (now - last).days > STALE_AFTER_DAYS
+
+
 def fetch_soundcloud_plays_v2(client_id: str | None = None) -> dict[str, int]:
     """Fetch play counts via SoundCloud's v2 API with pagination."""
     tracks = {}
@@ -226,7 +284,8 @@ def fetch_soundcloud_all(existing_sc: dict) -> tuple[dict, list[dict], bool]:
     """
     print("\n--- SoundCloud ---")
 
-    client_id = _get_soundcloud_client_id()
+    client_id, cid_source = resolve_soundcloud_client_id()
+    print(f"  client_id source: {cid_source}")
     rss_tracks = fetch_soundcloud_rss()
     api_plays = fetch_soundcloud_plays_v2(client_id)
     profile = fetch_soundcloud_profile(client_id)
@@ -234,6 +293,16 @@ def fetch_soundcloud_all(existing_sc: dict) -> tuple[dict, list[dict], bool]:
     # Did the API return any real play counts?
     api_total = sum(api_plays.values())
     got_plays = api_total > 0
+
+    # A cached/env client_id can silently rotate out from under us. If it returned
+    # nothing, re-scrape a fresh id once before falling back to preserve-existing.
+    if not got_plays and cid_source != "scrape":
+        print(f"  client_id from {cid_source} returned no plays — re-scraping a fresh id")
+        client_id = _get_soundcloud_client_id()
+        api_plays = fetch_soundcloud_plays_v2(client_id)
+        profile = fetch_soundcloud_profile(client_id) or profile
+        api_total = sum(api_plays.values())
+        got_plays = api_total > 0
 
     existing_tracks = existing_sc.get("tracks", {})
     existing_total = existing_sc.get("total_plays", 0) or 0
@@ -271,6 +340,9 @@ def fetch_soundcloud_all(existing_sc: dict) -> tuple[dict, list[dict], bool]:
                     "total_streams_sc", "total_downloads", "source"):
             if key in existing_sc:
                 sc_data[key] = existing_sc[key]
+
+        # Remember the client_id that just worked so the next run can skip the scrape.
+        _save_sc_client_id_cache(client_id)
     else:
         # API failed — preserve ALL existing data, only update catalog from RSS
         print(f"  WARN: API returned 0 plays, preserving existing data ({existing_total:,} plays)")
@@ -281,6 +353,13 @@ def fetch_soundcloud_all(existing_sc: dict) -> tuple[dict, list[dict], bool]:
         if profile:
             sc_data["total_tracks"] = profile.get("track_count", sc_data.get("total_tracks", 0))
             sc_data["followers"] = profile.get("followers_count", sc_data.get("followers", 0))
+
+    # Surface silent degradation: if we're serving data whose last successful
+    # fetch is stale, the weekly auto-fetch has quietly stopped landing real plays.
+    if _is_stale(sc_data.get("last_successful_fetch"), datetime.now(timezone.utc)):
+        print(f"  ⚠ SoundCloud data is stale (last successful fetch "
+              f"{sc_data.get('last_successful_fetch')}, >{STALE_AFTER_DAYS}d ago)",
+              file=sys.stderr)
 
     return sc_data, rss_tracks, got_plays
 
