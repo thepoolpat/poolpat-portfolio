@@ -7,7 +7,7 @@ import { getCollection } from "astro:content";
 import playsRaw from "@data/plays.json";
 import worldGeo from "@data/world-geo.json";
 import { countries as geoCountries, combinedTotalPlays, countryCount } from "@/lib/geo";
-import { platformTotals } from "@/lib/totals";
+import { platformTotals, soundcloudEngagement } from "@/lib/totals";
 import { link, hashCampaign } from "@affiliate";
 
 const data = playsRaw as any;
@@ -16,6 +16,7 @@ const site = import.meta.env.SITE ?? "https://thepoolpat.github.io";
 const art = (r: any) => `${base}${r.artwork}`;
 const releases = (await getCollection("releases")).map((e) => e.data).sort((a, b) => a.order - b.order);
 const { scTotal, spTotal, amTotal, grandTotal } = platformTotals(data);
+const scEng = soundcloudEngagement(data);
 
 // ── Listener map (SoundCloud + Apple Music) ────────────────────────────────
 // Build-time choropleth. SoundCloud and Apple Music are the only platforms that
@@ -132,7 +133,7 @@ const artistJsonLd = {
     <h2><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span> Live Stats</h2>
     <div class="stats-grid">
       <StatCard label="Total Plays" value={grandTotal} sub="All platforms" />
-      <StatCard label="SoundCloud" value={scTotal} color="var(--accent-sc)" />
+      <StatCard label="SoundCloud" value={scTotal} color="var(--accent-sc)" sub={scEng.likes > 0 ? `${scEng.likes.toLocaleString("en-IE")} likes` : undefined} />
       <StatCard label="Spotify" value={spTotal} color="var(--accent-sp)" />
       <StatCard label="Apple Music" value={amTotal} color="var(--accent-am)" />
     </div>
