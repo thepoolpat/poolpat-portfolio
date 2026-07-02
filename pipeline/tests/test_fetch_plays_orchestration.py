@@ -37,7 +37,7 @@ class TestFetchSoundcloudAll(unittest.TestCase):
     def test_api_zero_plays_preserves_existing(self, _cid, mock_rss, mock_v2, mock_profile):
         """When the API returns no real plays, existing data must be preserved verbatim."""
         mock_rss.return_value = []
-        mock_v2.return_value = {}  # API failed / returned nothing
+        mock_v2.return_value = ({}, {})  # API failed / returned nothing
         mock_profile.return_value = {}
 
         existing = {
@@ -61,7 +61,7 @@ class TestFetchSoundcloudAll(unittest.TestCase):
     @patch("fetch_plays._get_soundcloud_client_id")
     def test_api_returns_higher_counts_merges(self, _cid, mock_rss, mock_v2, mock_profile):
         mock_rss.return_value = []
-        mock_v2.return_value = {"track_a": 1500, "track_b": 200}
+        mock_v2.return_value = ({"track_a": 1500, "track_b": 200}, {})
         mock_profile.return_value = {"track_count": 2, "followers_count": 50}
 
         existing = {"tracks": {"track_a": 1000, "track_b": 100}, "total_plays": 1100}
@@ -80,7 +80,7 @@ class TestFetchSoundcloudAll(unittest.TestCase):
     def test_api_returns_lower_counts_does_not_decrease(self, _cid, mock_rss, mock_v2, mock_profile):
         """The load-bearing case: API briefly returns lower numbers — totals must not regress."""
         mock_rss.return_value = []
-        mock_v2.return_value = {"track_a": 50}  # API hiccup
+        mock_v2.return_value = ({"track_a": 50}, {})  # API hiccup
         mock_profile.return_value = {}
 
         existing = {"tracks": {"track_a": 10000}, "total_plays": 10000}
@@ -97,7 +97,7 @@ class TestFetchSoundcloudAll(unittest.TestCase):
     def test_rss_only_new_release_added_with_zero(self, _cid, mock_rss, mock_v2, mock_profile):
         """RSS feed publishes a new track before the API knows about it. Add it with 0 plays."""
         mock_rss.return_value = [{"title": "brand_new_track"}]
-        mock_v2.return_value = {"old_track": 100}
+        mock_v2.return_value = ({"old_track": 100}, {})
         mock_profile.return_value = {}
 
         sc_data, _, _ = fetch_plays.fetch_soundcloud_all({"tracks": {"old_track": 100}, "total_plays": 100})
@@ -114,7 +114,7 @@ class TestFetchSoundcloudAll(unittest.TestCase):
     def test_rss_fuzzy_match_does_not_duplicate(self, _cid, mock_rss, mock_v2, mock_profile):
         """If RSS title matches an existing track case-insensitively, do not re-add."""
         mock_rss.return_value = [{"title": "  Track A  "}]
-        mock_v2.return_value = {"track a": 500}
+        mock_v2.return_value = ({"track a": 500}, {})
         mock_profile.return_value = {}
 
         sc_data, _, _ = fetch_plays.fetch_soundcloud_all({"tracks": {}, "total_plays": 0})
@@ -133,7 +133,7 @@ class TestFetchSoundcloudAll(unittest.TestCase):
         nfc = unicodedata.normalize("NFC", "Déjà 30 Piges")
         nfd = unicodedata.normalize("NFD", "Déjà 30 Piges")
         mock_rss.return_value = [{"title": nfd}]
-        mock_v2.return_value = {nfc: 1355}
+        mock_v2.return_value = ({nfc: 1355}, {})
         mock_profile.return_value = {}
 
         sc_data, _, _ = fetch_plays.fetch_soundcloud_all({"tracks": {nfc: 1300}, "total_plays": 1300})
@@ -713,14 +713,19 @@ class TestFetchSoundcloudPlaysV2(unittest.TestCase):
             "next_href": "https://api/next",
         })
         page2 = _resp(200, {
-            "collection": [{"title": "t50", "playback_count": 50}],
+            "collection": [{"title": "t50", "playback_count": 50, "likes_count": 7,
+                            "permalink_url": "https://soundcloud.com/poolpat/t50"}],
             "next_href": None,
         })
         mock_get.side_effect = [page1, page2]
 
-        tracks = fetch_plays.fetch_soundcloud_plays_v2(client_id="cid")
+        tracks, details = fetch_plays.fetch_soundcloud_plays_v2(client_id="cid")
         self.assertEqual(len(tracks), 51)
         self.assertEqual(tracks["t50"], 50)
+        # details accumulate across pages alongside plays
+        self.assertEqual(len(details), 51)
+        self.assertEqual(details["t50"]["likes"], 7)
+        self.assertEqual(details["t50"]["permalink_url"], "https://soundcloud.com/poolpat/t50")
 
     @patch("fetch_plays.requests.get")
     def test_http_error_at_offset_returns_partial(self, mock_get):
@@ -732,17 +737,26 @@ class TestFetchSoundcloudPlaysV2(unittest.TestCase):
         page2 = _resp(500)
         mock_get.side_effect = [page1, page2]
 
-        tracks = fetch_plays.fetch_soundcloud_plays_v2(client_id="cid")
+        tracks, details = fetch_plays.fetch_soundcloud_plays_v2(client_id="cid")
         self.assertEqual(len(tracks), 50)  # only the first page
+        self.assertEqual(len(details), 50)
 
     @patch("fetch_plays.requests.get")
     def test_null_playback_count_becomes_zero(self, mock_get):
         mock_get.return_value = _resp(200, {
-            "collection": [{"title": "t1", "playback_count": None}],
+            "collection": [{"title": "t1", "playback_count": None, "likes_count": None,
+                            "reposts_count": None, "comment_count": None,
+                            "download_count": None, "permalink_url": None}],
             "next_href": None,
         })
-        tracks = fetch_plays.fetch_soundcloud_plays_v2(client_id="cid")
+        tracks, details = fetch_plays.fetch_soundcloud_plays_v2(client_id="cid")
         self.assertEqual(tracks["t1"], 0)
+        # None engagement counts become 0, None metadata becomes ""
+        self.assertEqual(details["t1"]["likes"], 0)
+        self.assertEqual(details["t1"]["reposts"], 0)
+        self.assertEqual(details["t1"]["comments"], 0)
+        self.assertEqual(details["t1"]["downloads"], 0)
+        self.assertEqual(details["t1"]["permalink_url"], "")
 
 
 # ─── Failure-tracker persistence ─────────────────────────────────────────────
@@ -873,7 +887,7 @@ class TestResolveSoundcloudClientId(unittest.TestCase):
 class TestSoundcloudClientIdCacheInOrchestration(unittest.TestCase):
     @patch("fetch_plays._save_sc_client_id_cache")
     @patch("fetch_plays.fetch_soundcloud_profile", return_value={})
-    @patch("fetch_plays.fetch_soundcloud_plays_v2", return_value={"track_a": 100})
+    @patch("fetch_plays.fetch_soundcloud_plays_v2", return_value=({"track_a": 100}, {}))
     @patch("fetch_plays.fetch_soundcloud_rss", return_value=[])
     @patch("fetch_plays.resolve_soundcloud_client_id", return_value=("good_cid", "scrape"))
     def test_working_id_cached_on_success(self, _resolve, _rss, _v2, _profile, mock_save):
@@ -889,7 +903,7 @@ class TestSoundcloudClientIdCacheInOrchestration(unittest.TestCase):
     def test_stale_cached_id_triggers_rescrape(self, _resolve, _rss, mock_v2, _profile,
                                                mock_scrape, _save):
         """A cached id that returns no plays must trigger one fresh scrape + retry."""
-        mock_v2.side_effect = [{}, {"track_a": 500}]  # cache id fails, fresh id works
+        mock_v2.side_effect = [({}, {}), ({"track_a": 500}, {})]  # cache id fails, fresh id works
         sc_data, _, got = fetch_plays.fetch_soundcloud_all({"tracks": {}, "total_plays": 0})
         self.assertTrue(got)
         mock_scrape.assert_called_once()
@@ -902,7 +916,7 @@ class TestSoundcloudClientIdCacheInOrchestration(unittest.TestCase):
 
     @patch("fetch_plays._get_soundcloud_client_id")
     @patch("fetch_plays.fetch_soundcloud_profile", return_value={})
-    @patch("fetch_plays.fetch_soundcloud_plays_v2", return_value={})
+    @patch("fetch_plays.fetch_soundcloud_plays_v2", return_value=({}, {}))
     @patch("fetch_plays.fetch_soundcloud_rss", return_value=[])
     @patch("fetch_plays.resolve_soundcloud_client_id", return_value=("scraped", "scrape"))
     def test_scrape_source_miss_does_not_retry(self, _resolve, _rss, mock_v2, _profile,
@@ -945,7 +959,7 @@ class TestSoundcloudStaleness(unittest.TestCase):
         self.assertTrue(fetch_plays._is_stale(naive_old, now))
 
     @patch("fetch_plays.fetch_soundcloud_profile", return_value={})
-    @patch("fetch_plays.fetch_soundcloud_plays_v2", return_value={})
+    @patch("fetch_plays.fetch_soundcloud_plays_v2", return_value=({}, {}))
     @patch("fetch_plays.fetch_soundcloud_rss", return_value=[])
     @patch("fetch_plays.resolve_soundcloud_client_id", return_value=(None, "scrape"))
     def test_preserved_stale_data_emits_warning(self, _resolve, _rss, _v2, _profile):
@@ -964,7 +978,7 @@ class TestSoundcloudStaleness(unittest.TestCase):
 
     @patch("fetch_plays._save_sc_client_id_cache")
     @patch("fetch_plays.fetch_soundcloud_profile", return_value={})
-    @patch("fetch_plays.fetch_soundcloud_plays_v2", return_value={"a": 200})
+    @patch("fetch_plays.fetch_soundcloud_plays_v2", return_value=({"a": 200}, {}))
     @patch("fetch_plays.fetch_soundcloud_rss", return_value=[])
     @patch("fetch_plays.resolve_soundcloud_client_id", return_value=("cid", "scrape"))
     def test_successful_fetch_is_not_stale(self, _resolve, _rss, _v2, _profile, _save):
