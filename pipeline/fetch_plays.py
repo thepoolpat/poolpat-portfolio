@@ -159,8 +159,8 @@ def _get_soundcloud_client_id() -> str | None:
             cid_match = re.search(r'client_id:"([a-zA-Z0-9]+)"', js_resp.text)
             if cid_match:
                 return cid_match.group(1)
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"  client_id scrape error: {e}", file=sys.stderr)
     return None
 
 
@@ -269,8 +269,8 @@ def fetch_soundcloud_profile(client_id: str | None = None) -> dict:
         resp = requests.get(url, headers=HEADERS, timeout=15)
         if resp.status_code == 200:
             return resp.json()
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"  Profile fetch error: {e}", file=sys.stderr)
     return {}
 
 
@@ -389,8 +389,8 @@ def _get_spotify_token() -> str | None:
         )
         if resp.status_code == 200:
             return resp.json().get("accessToken")
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"  Anonymous token error: {e}", file=sys.stderr)
     return None
 
 
