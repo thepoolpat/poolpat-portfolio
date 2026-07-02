@@ -108,6 +108,85 @@ def monotonic_total(existing_total: int, computed_total: int, label: str = "") -
     return max(e, c)
 
 
+# ─── Track details (engagement + metadata) ──────────────────────────────────
+# Unlike play counts, engagement is NOT monotonic: likes/reposts can genuinely
+# decrease (unlikes). Safety against bad fetches comes from gating instead —
+# details are only merged from a fetch that returned real play counts, and only
+# for tracks present in that fetch; everything else keeps its existing values.
+
+ENGAGEMENT_KEYS = ("likes", "reposts", "comments", "downloads")
+DETAIL_META_KEYS = ("permalink_url", "artwork_url", "created_at", "genre")
+
+
+def _rss_track_details(rss_tracks: list[dict]) -> dict:
+    """Map RSS items to canon_key -> metadata fallback (no engagement — RSS has none).
+    Used for brand-new releases the v2 API doesn't list yet."""
+    out = {}
+    for rt in rss_tracks:
+        meta = {}
+        for field, rss_field in (("permalink_url", "link"),
+                                 ("artwork_url", "artwork"),
+                                 ("created_at", "pub_date")):
+            v = rt.get(rss_field) or ""
+            if v:
+                meta[field] = v
+        if meta:
+            out[_canon_key(rt.get("title", ""))] = meta
+    return out
+
+
+def merge_track_details(existing: dict, fetched: dict,
+                        rss_fallback: dict, final_tracks: dict) -> dict:
+    """Build the track_details map for the already-merged tracks dict.
+
+    Keys are the display titles of final_tracks; existing/fetched entries are
+    matched via _canon_key so NFC/NFD, apostrophe, and case variants collapse
+    (same semantics as monotonic_merge_tracks). Per field:
+    - engagement: fetched numeric value wins (0 included — a genuine 0 is data),
+      else the existing value is kept;
+    - metadata: fetched non-empty > existing non-empty > RSS fallback.
+    Tracks with no data from any source get no entry. Inputs are not mutated."""
+    existing_by_key = {_canon_key(t): d for t, d in existing.items()
+                       if isinstance(d, dict)}
+    fetched_by_key = {_canon_key(t): d for t, d in fetched.items()
+                      if isinstance(d, dict)}
+
+    merged = {}
+    for title in final_tracks:
+        k = _canon_key(title)
+        old = existing_by_key.get(k, {})
+        new = fetched_by_key.get(k, {})
+        rss = rss_fallback.get(k, {})
+
+        entry = {}
+        for field in ENGAGEMENT_KEYS:
+            if isinstance(new.get(field), (int, float)):
+                entry[field] = new[field]
+            elif isinstance(old.get(field), (int, float)):
+                entry[field] = old[field]
+        for field in DETAIL_META_KEYS:
+            v = new.get(field) or old.get(field) or rss.get(field) or ""
+            if v:
+                entry[field] = v
+        if entry:
+            merged[title] = entry
+    return merged
+
+
+def sum_engagement(track_details: dict) -> dict:
+    """Aggregate per-track engagement into {likes, reposts, comments, downloads}.
+    Tolerates malformed entries (plays.json is occasionally hand-edited)."""
+    totals = {field: 0 for field in ENGAGEMENT_KEYS}
+    for entry in track_details.values():
+        if not isinstance(entry, dict):
+            continue
+        for field in ENGAGEMENT_KEYS:
+            v = entry.get(field)
+            if isinstance(v, (int, float)):
+                totals[field] += int(v)
+    return totals
+
+
 def get_last_history_row() -> dict:
     """Read the last row of history.csv to enforce monotonic totals."""
     if not HISTORY_CSV.exists():
@@ -217,9 +296,14 @@ def _is_stale(iso_timestamp, now: datetime) -> bool:
     return (now - last).days > STALE_AFTER_DAYS
 
 
-def fetch_soundcloud_plays_v2(client_id: str | None = None) -> dict[str, int]:
-    """Fetch play counts via SoundCloud's v2 API with pagination."""
+def fetch_soundcloud_plays_v2(client_id: str | None = None) -> tuple[dict[str, int], dict[str, dict]]:
+    """Fetch play counts via SoundCloud's v2 API with pagination.
+
+    Returns (plays, details) keyed by raw API title: plays is title -> playback_count;
+    details carries the engagement counts and track metadata the same response
+    already includes (likes/reposts/comments/downloads, permalink, artwork, ...)."""
     tracks = {}
+    details = {}
     try:
         if not client_id:
             client_id = _get_soundcloud_client_id()
@@ -248,6 +332,16 @@ def fetch_soundcloud_plays_v2(client_id: str | None = None) -> dict[str, int]:
                 title = item.get("title", "Unknown")
                 plays = item.get("playback_count", 0) or 0
                 tracks[title] = plays
+                details[title] = {
+                    "likes": item.get("likes_count", 0) or 0,
+                    "reposts": item.get("reposts_count", 0) or 0,
+                    "comments": item.get("comment_count", 0) or 0,
+                    "downloads": item.get("download_count", 0) or 0,
+                    "permalink_url": item.get("permalink_url") or "",
+                    "artwork_url": item.get("artwork_url") or "",
+                    "created_at": item.get("created_at") or "",
+                    "genre": item.get("genre") or "",
+                }
 
             next_href = data.get("next_href")
             if not next_href or len(collection) < limit:
@@ -257,7 +351,7 @@ def fetch_soundcloud_plays_v2(client_id: str | None = None) -> dict[str, int]:
         print(f"  v2 API: {len(tracks)} tracks with play counts")
     except Exception as e:
         print(f"  v2 API Error: {e}", file=sys.stderr)
-    return tracks
+    return tracks, details
 
 
 def fetch_soundcloud_profile(client_id: str | None = None) -> dict:
@@ -287,7 +381,7 @@ def fetch_soundcloud_all(existing_sc: dict) -> tuple[dict, list[dict], bool]:
     client_id, cid_source = resolve_soundcloud_client_id()
     print(f"  client_id source: {cid_source}")
     rss_tracks = fetch_soundcloud_rss()
-    api_plays = fetch_soundcloud_plays_v2(client_id)
+    api_plays, api_details = fetch_soundcloud_plays_v2(client_id)
     profile = fetch_soundcloud_profile(client_id)
 
     # Did the API return any real play counts?
@@ -299,7 +393,7 @@ def fetch_soundcloud_all(existing_sc: dict) -> tuple[dict, list[dict], bool]:
     if not got_plays and cid_source != "scrape":
         print(f"  client_id from {cid_source} returned no plays — re-scraping a fresh id")
         client_id = _get_soundcloud_client_id()
-        api_plays = fetch_soundcloud_plays_v2(client_id)
+        api_plays, api_details = fetch_soundcloud_plays_v2(client_id)
         profile = fetch_soundcloud_profile(client_id) or profile
         api_total = sum(api_plays.values())
         got_plays = api_total > 0
@@ -326,9 +420,18 @@ def fetch_soundcloud_all(existing_sc: dict) -> tuple[dict, list[dict], bool]:
 
         print(f"  Merged: {len(merged)} tracks, {final_total:,} total plays (was {existing_total:,})")
 
+        track_details = merge_track_details(
+            existing_sc.get("track_details", {}) or {},
+            api_details,
+            _rss_track_details(rss_tracks),
+            merged,
+        )
+
         sc_data = {
             "url": SOUNDCLOUD_URL,
             "tracks": merged,
+            "track_details": track_details,
+            "engagement": sum_engagement(track_details),
             "total_plays": final_total,
             "total_tracks": profile.get("track_count", len(merged)),
             "followers": profile.get("followers_count", existing_sc.get("followers", 0)),
@@ -737,9 +840,54 @@ def save_plays_json(data: dict) -> None:
     print(f"\nSaved {PLAYS_JSON}")
 
 
+HISTORY_FIELDNAMES = [
+    "timestamp", "soundcloud_total_plays", "soundcloud_track_count",
+    "spotify_total_streams", "spotify_track_count",
+    "apple_music_total_plays", "apple_music_track_count",
+    "soundcloud_likes", "soundcloud_reposts",
+    "soundcloud_comments", "soundcloud_downloads",
+]
+# The header the file carried before the engagement columns were added; a file
+# starting with exactly this line gets a one-time header migration (old data
+# rows are untouched — readers default the absent columns to 0/empty).
+_LEGACY_HISTORY_HEADER = ",".join(HISTORY_FIELDNAMES[:7])
+
+
+def _migrate_history_header() -> None:
+    """One-time header migration: rewrite the canonical 7-column header to the
+    current 11-column one so appended rows' new columns are readable by name
+    (both csv.DictReader here and the positional parser in stats.astro).
+    Any other header — already-migrated or an unknown legacy variant — is left
+    alone. Atomic (temp file + os.replace) like _atomic_write_json."""
+    if not HISTORY_CSV.exists():
+        return
+    try:
+        raw = HISTORY_CSV.read_bytes().decode()
+    except Exception:
+        return
+    head, sep, rest = raw.partition("\n")
+    if head.strip() != _LEGACY_HISTORY_HEADER:
+        return
+    # Preserve the file's line terminator (csv.DictWriter emits \r\n) and keep
+    # every data row byte-identical — only the header line changes.
+    terminator = "\r\n" if head.endswith("\r") else "\n"
+    new_raw = ",".join(HISTORY_FIELDNAMES) + terminator + rest
+    tmp = HISTORY_CSV.with_name(HISTORY_CSV.name + ".tmp")
+    try:
+        tmp.write_bytes(new_raw.encode())
+        os.replace(tmp, HISTORY_CSV)
+        print("  history.csv: header migrated to include engagement columns")
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+
+
 def append_history_csv(data: dict) -> None:
-    """Append a history row. MONOTONIC: never record a value lower than the previous row."""
+    """Append a history row. MONOTONIC: never record a value lower than the previous row.
+    (Monotonicity applies to the play/track-count columns; the engagement columns
+    are recorded as fetched — see the track-details section for the rationale.)"""
     DATA_DIR.mkdir(parents=True, exist_ok=True)
+    _migrate_history_header()
     file_exists = HISTORY_CSV.exists()
 
     last = get_last_history_row()
@@ -771,14 +919,13 @@ def append_history_csv(data: dict) -> None:
     sp_tc = max(prev_sp_tc, len(sp.get("tracks", {})))
     am_tc = max(prev_am_tc, len(am.get("tracks", {})))
 
-    fieldnames = [
-        "timestamp", "soundcloud_total_plays", "soundcloud_track_count",
-        "spotify_total_streams", "spotify_track_count",
-        "apple_music_total_plays", "apple_music_track_count",
-    ]
+    # Engagement columns: recorded as fetched, no max-guard. A failed fetch
+    # carries the previous engagement object forward in plays.json, so the row
+    # can't dip on failure; a real decrease (unlikes) is recorded honestly.
+    eng = sc.get("engagement") or {}
 
     with open(HISTORY_CSV, "a", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer = csv.DictWriter(f, fieldnames=HISTORY_FIELDNAMES)
         if not file_exists:
             writer.writeheader()
         writer.writerow({
@@ -789,6 +936,10 @@ def append_history_csv(data: dict) -> None:
             "spotify_track_count": sp_tc,
             "apple_music_total_plays": am_total,
             "apple_music_track_count": am_tc,
+            "soundcloud_likes": int(eng.get("likes", 0) or 0),
+            "soundcloud_reposts": int(eng.get("reposts", 0) or 0),
+            "soundcloud_comments": int(eng.get("comments", 0) or 0),
+            "soundcloud_downloads": int(eng.get("downloads", 0) or 0),
         })
     print(f"History: SC={sc_total:,} SP={sp_total:,} AM={am_total:,}")
 
