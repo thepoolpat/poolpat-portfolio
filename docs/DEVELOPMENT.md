@@ -15,7 +15,7 @@ For the public-facing artist page, see the root [README.md](../README.md) and th
 
 ## Stack
 
-- **Framework:** [Astro](https://astro.build/) 6.x (static output, zero JS by default)
+- **Framework:** [Astro](https://astro.build/) 7.x (static output, zero JS by default)
 - **Data pipeline:** Python (`pipeline/fetch_plays.py`) — fetches SoundCloud, Spotify, Apple Music weekly via GitHub Actions
 - **Spotify auth:** OAuth 2.0 Authorization Code Flow with PKCE (user-scoped data); hand-rolled `requests` client (`spotify_client.py`), not spotipy
 - **Affiliate links:** `packages/affiliate-helper/js/` — validated Apple Music URLs with campaign tracking
@@ -27,17 +27,23 @@ For the public-facing artist page, see the root [README.md](../README.md) and th
 ```
 ├── .github/workflows/
 │    ├── deploy.yml               # Build Astro → deploy to GitHub Pages
-│    └── fetch-data.yml           # Weekly Python pipeline (cron 0 6 * * 0)
+│    ├── fetch-data.yml           # Weekly Python pipeline (cron 0 6 * * 0)
+│    ├── tests.yml                # pytest + vitest + build/validate on push/PR
+│    └── codeql.yml               # CodeQL static analysis
 ├── packages/affiliate-helper/   # Apple Music affiliate link builder (JS)
 ├── pipeline/
 │    ├── fetch_plays.py           # Multi-platform play count scraper
+│    ├── fetch_playlists.py       # Spotify public playlist search (client credentials)
 │    ├── spotify_auth.py          # Spotify PKCE OAuth flow
 │    ├── spotify_client.py        # Spotify API client (typed, with retry)
 │    ├── spotify_errors.py        # Typed error hierarchy
+│    ├── musickit_token.py        # Apple Music developer-token (JWT) generator
 │    ├── requirements.txt
-│    └── tests/                   # 140+ unit tests (7 modules)
-├── dev/                         # Dev-only tooling (not in CI, except gen_world_geo.mjs)
+│    └── tests/                   # 180 unit tests (7 files)
+├── dev/                         # Dev-only tooling (not in CI, except gen_world_geo.mjs
+│    │                           #   and validate-data.mjs, which runs in tests.yml)
 │    ├── gen_world_geo.mjs       # Load-bearing geo generator for the listener map
+│    ├── validate-data.mjs       # Shape validator for data/*.json (tests.yml build job)
 │    ├── examples/               # Experimental Spotify demos (not in CI)
 │    ├── setup_*.sh / setup_*.py # Experimental setup scripts (not in CI)
 │    ├── config/                 # camoufox_spotify.json
@@ -48,9 +54,12 @@ For the public-facing artist page, see the root [README.md](../README.md) and th
 ├── public/artwork/              # Release cover images (1200px, web-optimized)
 └── src/
      ├── data/releases.json       # Hand-maintained release catalog (7 releases)
+     ├── content.config.ts        # Astro content collection (release data schema)
      ├── lib/                      # Shared TS helpers
      │    ├── geo.ts               # Listener-map geo merge (SoundCloud + Apple Music)
-     │    └── geo.test.ts          # Vitest coverage for geo.ts (13 tests)
+     │    ├── geo.test.ts          # Vitest coverage for geo.ts (13 tests)
+     │    ├── totals.ts            # Shared per-platform totals + SC engagement helper
+     │    └── totals.test.ts       # Vitest coverage for totals.ts (6 tests)
      ├── layouts/Base.astro       # HTML shell, SEO, a11y
      ├── components/              # Astro components
      ├── pages/                   # Route pages
@@ -119,10 +128,19 @@ The Python fetcher runs weekly (`fetch-data.yml`, cron `0 6 * * 0` — Sundays
 
 1. **Spotify (user-scoped):** PKCE refresh token → top tracks (short/medium/long term), recently played
 2. **Spotify (public):** Client Credentials → catalog popularity scores (0-100)
-3. **SoundCloud:** RSS feed + v2 API → play counts, catalog metadata
+3. **SoundCloud:** RSS feed + v2 API → play counts, per-track engagement
+   (likes/reposts/comments/downloads) and metadata (permalink, artwork,
+   created_at, genre), catalog discovery
 4. **Apple Music:** API or web scraping → track catalog (plays are manual entry)
-5. Enforces a **monotonic invariant** — play counts never decrease between fetches
+5. Enforces a **monotonic invariant** — play counts never decrease between fetches.
+   (Engagement counts are exempt by design: they can genuinely decrease, so they
+   are gated — only merged from a fetch that returned real play counts — rather
+   than clamped.)
 6. Commits updated `data/` files to `main` → triggers site rebuild
+
+`data/history.csv` gains one row per run: play totals and track counts per
+platform (monotonic), plus `soundcloud_likes` / `soundcloud_reposts` /
+`soundcloud_comments` / `soundcloud_downloads` (recorded as fetched).
 
 ### Required Secrets
 
@@ -134,6 +152,8 @@ The Python fetcher runs weekly (`fetch-data.yml`, cron `0 6 * * 0` — Sundays
 | `RAPIDAPI_KEY` | Playlist enrichment in `fetch_playlists.py` (skipped if unset) |
 | `CAMPAIGN_HASH_SALT` | **Required for public/Pages builds** — affiliate-helper hashes campaign tokens at build time and throws without it (supplied by `deploy.yml`) |
 | `APPLE_MUSIC_TOKEN` | Apple Music API access (optional — requires paid Developer Program) |
+| `SOUNDCLOUD_CLIENT_ID` | Optional pin for the SoundCloud v2 API client_id — skips the fragile JS-bundle scrape (resolver order: env → `data/.sc_state.json` cache → scrape) |
+| `GH_PAT` | PAT with Secrets write access — `fetch-data.yml` wires it into `GH_TOKEN` so `gh secret set` can store a rotated Spotify refresh token |
 
 > **Dev-only:** `CAMOUFOX_HOME` (Camoufox cache directory) is used only by the
 > local/experimental Spotify logging path — it is **not** a CI secret. See the
@@ -144,7 +164,24 @@ The Python fetcher runs weekly (`fetch-data.yml`, cron `0 6 * * 0` — Sundays
 - **Spotify:** `total_streams` and `monthly_listeners` are preserved from manual entry (Spotify for Artists). The API provides popularity scores and top tracks.
 - **Camoufox:** Local/experimental only — not part of this weekly pipeline. (Before the 2026-05-06 consolidation, an earlier local-first playback feed fed both the former `poolpat-plays` repo and this one; that path is now dev-only — see the note above.)
 - **Apple Music:** Play counts are manual entry only. API token requires paid Apple Developer Program ($99/yr). Data preserved at current values when token unavailable.
-- **SoundCloud:** Fully automated via v2 API + RSS feed.
+- **SoundCloud:** Fully automated via v2 API + RSS feed. The v2 response also
+  supplies per-track engagement and metadata, stored in `plays.json` under
+  `soundcloud.track_details` with an aggregate under `soundcloud.engagement`.
+
+### Apple Music developer token (`musickit_token.py`)
+
+`pipeline/musickit_token.py` generates the Apple Music developer token (JWT,
+valid up to 6 months) from a MusicKit private key. It reads three env vars
+(or prompts interactively):
+
+| Env var | Value |
+|---------|-------|
+| `APPLE_TEAM_ID` | 10-character Apple Developer team ID |
+| `MUSICKIT_KEY_ID` | 10-character MusicKit key ID |
+| `MUSICKIT_KEY_PATH` | Path to the downloaded `.p8` private key |
+
+Store the output as the `APPLE_MUSIC_TOKEN` secret (pipeline) and
+`MUSICKIT_DEVELOPER_TOKEN` (Astro build).
 
 ## Affiliate Attribution
 
