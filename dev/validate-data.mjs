@@ -116,6 +116,36 @@ function checkPlays(file, json) {
         }
       }
     }
+
+    // engagement aggregate (SoundCloud): every value numeric when present
+    if ("engagement" in section) {
+      const eng = section.engagement;
+      if (typeof eng !== "object" || eng === null || Array.isArray(eng)) {
+        fail(file, `${p}.engagement is not an object`);
+      }
+      for (const [k, v] of Object.entries(eng)) {
+        if (!isNum(v)) fail(file, `${p}.engagement.${k} is not a number (got ${JSON.stringify(v)})`);
+      }
+    }
+
+    // track_details map (SoundCloud): entries are objects; the four engagement
+    // fields must be numeric where present (metadata strings pass through)
+    if ("track_details" in section) {
+      const details = section.track_details;
+      if (typeof details !== "object" || details === null || Array.isArray(details)) {
+        fail(file, `${p}.track_details is not an object map`);
+      }
+      for (const [name, entry] of Object.entries(details)) {
+        if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+          fail(file, `${p}.track_details[${JSON.stringify(name)}] is not an object`);
+        }
+        for (const k of ["likes", "reposts", "comments", "downloads"]) {
+          if (k in entry && !isNum(entry[k])) {
+            fail(file, `${p}.track_details[${JSON.stringify(name)}].${k} is not a number (got ${JSON.stringify(entry[k])})`);
+          }
+        }
+      }
+    }
   }
   return json;
 }
@@ -151,11 +181,19 @@ function checkWorldGeoZod(file, json) {
 
 function checkPlaysZod(file, json) {
   const num = z.number().finite();
+  const TrackDetail = z.object({
+    likes: num.optional(),
+    reposts: num.optional(),
+    comments: num.optional(),
+    downloads: num.optional(),
+  }).passthrough();
   const Platform = z.object({
     total_plays: num.optional(),
     total_streams: num.optional(),
     total_plays_all_platforms: num.optional(),
     tracks: z.record(z.string(), num).optional(),
+    engagement: z.record(z.string(), num).optional(),
+    track_details: z.record(z.string(), TrackDetail).optional(),
   }).passthrough();
   const Schema = z.object({
     soundcloud: Platform.optional(),

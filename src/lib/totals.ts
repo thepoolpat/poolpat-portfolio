@@ -15,3 +15,23 @@ export function platformTotals(data: any) {
   const amTotal = data?.apple_music?.total_plays || sumTracks(data?.apple_music?.tracks);
   return { scTotal, spTotal, amTotal, grandTotal: scTotal + spTotal + amTotal };
 }
+
+// SoundCloud engagement totals with the same fallback rule as platformTotals:
+// prefer the stored aggregate (written by the pipeline's sum_engagement); if a
+// field is missing or 0, sum the per-track details instead.
+const ENGAGEMENT_FIELDS = ["likes", "reposts", "comments", "downloads"] as const;
+
+export function soundcloudEngagement(data: any) {
+  const stored = (data?.soundcloud?.engagement ?? {}) as Record<string, unknown>;
+  const details = (data?.soundcloud?.track_details ?? {}) as Record<string, unknown>;
+  const sumField = (field: string): number =>
+    Object.values(details).reduce<number>(
+      (a, d) => a + (Number((d as Record<string, unknown>)?.[field]) || 0),
+      0,
+    );
+  const out = {} as Record<(typeof ENGAGEMENT_FIELDS)[number], number>;
+  for (const field of ENGAGEMENT_FIELDS) {
+    out[field] = Number(stored[field]) || sumField(field);
+  }
+  return out;
+}
