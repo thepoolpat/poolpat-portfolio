@@ -178,8 +178,8 @@ def enrich_with_playlistcheck(playlist_id: str, rapidapi_key: str) -> dict:
         )
         if resp.status_code == 200:
             return resp.json()
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"  Playlistcheck error: {e}", file=sys.stderr)
     return {}
 
 

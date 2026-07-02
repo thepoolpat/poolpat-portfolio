@@ -16,6 +16,7 @@ Usage:
 """
 
 import json
+import sys
 from pathlib import Path
 
 # ============================================================================
@@ -60,7 +61,6 @@ def setup_env_file():
     if spotify_auth and isinstance(spotify_auth, dict):
         refresh_token = spotify_auth.get("refresh_token", "")
         if refresh_token:
-            existing = ENV_FILE.read_text() if ENV_FILE.exists() else ""
             # Keep the existing refresh token, don't overwrite
             print("  ✓ Refresh token already configured")
     else:
@@ -201,4 +201,4 @@ def main():
     return 0
 
 if __name__ == "__main__":
-    exit(main())
+    sys.exit(main())

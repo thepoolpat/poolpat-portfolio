@@ -724,10 +724,6 @@ class TestFetchSoundcloudPlaysV2(unittest.TestCase):
 
     @patch("fetch_plays.requests.get")
     def test_http_error_at_offset_returns_partial(self, mock_get):
-        page1 = _resp(200, {
-            "collection": [{"title": "t0", "playback_count": 100}] * 50,
-            "next_href": "https://api/next",
-        })
         # use unique titles to avoid dict collapse
         page1 = _resp(200, {
             "collection": [{"title": f"t{i}", "playback_count": i} for i in range(50)],
