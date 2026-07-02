@@ -6,7 +6,7 @@ import playsRaw from "@data/plays.json";
 import historyRaw from "@data/history.csv?raw";
 import yearlyRaw from "@data/play_history_yearly.json";
 import { countries as geoCountries, cities as geoCities, combinedTotalPlays, countryCount } from "@/lib/geo";
-import { platformTotals } from "@/lib/totals";
+import { platformTotals, soundcloudEngagement } from "@/lib/totals";
 
 // Read at runtime, not via static import: Rollup resolves import specifiers
 // during `astro build`, so a missing playlists.json would fail the build
@@ -30,6 +30,10 @@ const { scTotal, spTotal, amTotal, grandTotal } = platformTotals(data);
 
 const scFollowers = data.soundcloud?.followers || 0;
 const spMonthly = data.spotify?.monthly_listeners || 0;
+// Per-track SoundCloud engagement + metadata (likes/reposts, artwork, permalink),
+// captured by the pipeline from the same v2 response as the play counts.
+const scDetails: Record<string, any> = data.soundcloud?.track_details || {};
+const scEng = soundcloudEngagement(data);
 // Guard against a malformed timestamp, not just a missing one — an Invalid
 // Date would render literally here and feed NaN x-values to the chart below.
 const lastUpdatedDate = new Date(data.last_updated ?? NaN);
@@ -47,11 +51,18 @@ const amSorted = sortedTracks(amTracks);
 // The three Top-Tracks sections are structurally identical (top-5, same markup),
 // differing only by platform label, source array, and accent colour — drive them
 // from one config so the markup lives in a single place.
-const topTrackSections: { platform: string; tracks: [string, number][]; color: string }[] = [
-  { platform: "SoundCloud", tracks: scSorted, color: "var(--accent-sc)" },
+// `details` (SoundCloud only) enriches rows with artwork, a permalink, and
+// likes/reposts — everything stays conditional so the other platforms render as before.
+const topTrackSections: { platform: string; tracks: [string, number][]; color: string; details?: Record<string, any> }[] = [
+  { platform: "SoundCloud", tracks: scSorted, color: "var(--accent-sc)", details: scDetails },
   { platform: "Spotify", tracks: spSorted, color: "var(--accent-sp)" },
   { platform: "Apple Music", tracks: amSorted, color: "var(--accent-am)" },
 ];
+// Only link to canonical SoundCloud track URLs (same guard idea as playlistHref).
+const trackHref = (d: any): string | null =>
+  typeof d?.permalink_url === "string" && d.permalink_url.startsWith("https://soundcloud.com/")
+    ? d.permalink_url
+    : null;
 
 // ── Top Locations (flag display) — SoundCloud + Apple Music, summed in @/lib/geo ─
 const base = import.meta.env.BASE_URL;
@@ -155,6 +166,9 @@ const chartPoints = {
   sp: buildSeries("spotify", "spotify_total_streams", spTotal),
   am: buildSeries("apple_music", "apple_music_total_plays", amTotal),
 };
+// history.csv also carries soundcloud_likes/reposts/comments/downloads columns
+// (recorded weekly since mid-2026). Once enough rows accumulate, an engagement
+// trend series can reuse buildSeries' tail machinery against those columns.
 
 const playlists: any[] = playlistsData.playlists || [];
 const totalPlaylistReach = playlists.reduce((a: number, p: any) => a + (p.followers || 0), 0);
@@ -180,6 +194,9 @@ const playlistFetchedAt = playlistsData.fetched_at
     <StatCard label="Apple Music" value={amTotal} color="var(--accent-am)" sub={`${data.apple_music?.total_shazams || 0} Shazams`} />
     {totalPlaylistReach > 0 && (
       <StatCard label="Playlist Reach" value={totalPlaylistReach} color="var(--accent-sp)" sub={`${playlists.length} playlists`} />
+    )}
+    {scEng.likes > 0 && (
+      <StatCard label="SoundCloud Likes" value={scEng.likes} color="var(--accent-sc)" sub={`${scEng.reposts} reposts · ${scEng.comments} comments`} />
     )}
   </div>
 
@@ -444,13 +461,28 @@ const playlistFetchedAt = playlistsData.fetched_at
     <section class="section">
       <h2>Top Tracks &mdash; {sec.platform}</h2>
       <ul class="tracks">
-        {sec.tracks.slice(0, 5).map(([title, plays], i) => (
-          <li class="track">
-            <span class="track-num">{i + 1}</span>
-            <span class="track-title">{title}</span>
-            <span class="track-duration" style={`color:${sec.color}`}>{plays.toLocaleString("en-IE")}</span>
-          </li>
-        ))}
+        {sec.tracks.slice(0, 5).map(([title, plays], i) => {
+          const d = sec.details?.[title];
+          const href = d ? trackHref(d) : null;
+          const eng = d && ((d.likes || 0) > 0 || (d.reposts || 0) > 0)
+            ? `${(d.likes || 0).toLocaleString("en-IE")} likes · ${(d.reposts || 0).toLocaleString("en-IE")} reposts`
+            : null;
+          return (
+            <li class="track">
+              <span class="track-num">{i + 1}</span>
+              {d?.artwork_url && (
+                <img class="track-art" src={d.artwork_url} width="40" height="40" loading="lazy" decoding="async" alt="" />
+              )}
+              <span class="track-title">
+                {href
+                  ? <a href={href} target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:none">{title}</a>
+                  : title}
+                {eng && <span class="track-eng">{eng}</span>}
+              </span>
+              <span class="track-duration" style={`color:${sec.color}`}>{plays.toLocaleString("en-IE")}</span>
+            </li>
+          );
+        })}
       </ul>
     </section>
   ))}
