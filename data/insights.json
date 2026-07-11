@@ -1,9 +1,9 @@
 {
-  "fetched_at": "2026-07-02T14:38:24.239065+00:00",
+  "fetched_at": "2026-07-11T22:27:57.132785+00:00",
   "source": "https://soundcloud.com/you/insights/distributed?timewindow=ALL_TIME&resolution=YEAR",
   "method": "browser scrape (logged-in SoundCloud Insights, All Platforms / All Time)",
-  "total_plays": 52881,
-  "soundcloud_plays": 28639,
-  "spotify_plays": 20125,
-  "apple_music_plays": 4117
+  "total_plays": 53025,
+  "soundcloud_plays": 28643,
+  "spotify_plays": 20263,
+  "apple_music_plays": 4119
 }
