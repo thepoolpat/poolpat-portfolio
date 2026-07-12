@@ -12,7 +12,7 @@ import { link, hashCampaign } from "@affiliate";
 
 const data = playsRaw as any;
 const base = import.meta.env.BASE_URL;
-const site = import.meta.env.SITE ?? "https://thepoolpat.github.io";
+const site = import.meta.env.SITE;
 const art = (r: any) => `${base}${r.artwork}`;
 const releases = (await getCollection("releases")).map((e) => e.data).sort((a, b) => a.order - b.order);
 const { scTotal, spTotal, amTotal, grandTotal } = platformTotals(data);
