@@ -4,7 +4,6 @@
 // slide) and src/pages/releases/[slug].astro. Both call sites passed the same
 // release object and the same `web-portfolio-${slug}-hero` campaign, so the
 // block is parameterized only by the release.
-import ChartBadge from "@/components/ChartBadge.astro";
 import ListenButton from "@/components/ListenButton.astro";
 import { hashCampaign } from "@affiliate";
 
@@ -16,7 +15,11 @@ const { release: r } = Astro.props;
 <div class="meta">
   <span class="badge-type">{r.typeLabel}</span>
   {r.meta?.map((m: string) => <span>{m}</span>)}
-  {r.charts?.map((c: any) => <ChartBadge position={c} />)}
+  {r.charts?.map((c: any) => (
+    <span class="chart-badge" role="status" aria-label={`Chart position: ${c}`}>
+      &#x1F4C8; {c}
+    </span>
+  ))}
 </div>
 
 <ListenButton

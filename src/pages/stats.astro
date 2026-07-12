@@ -276,46 +276,22 @@ const playlistFetchedAt = playlistsData.fetched_at
         type: "line",
         data: {
           datasets: [
-            {
-              label: "SoundCloud",
-              data: sc,
-              borderColor: "#FF4000",
-              backgroundColor: "#FF4000",
-              fill: false,
-              tension: 0,
-              borderWidth: 2.5,
-              pointRadius: 3,
-              pointHoverRadius: 5,
-              pointHitRadius: 10,
-              spanGaps: true
-            },
-            {
-              label: "Spotify",
-              data: sp,
-              borderColor: "#1DB954",
-              backgroundColor: "#1DB954",
-              fill: false,
-              tension: 0,
-              borderWidth: 2.5,
-              pointRadius: 3,
-              pointHoverRadius: 5,
-              pointHitRadius: 10,
-              spanGaps: true
-            },
-            {
-              label: "Apple Music",
-              data: am,
-              borderColor: "#fa233b",
-              backgroundColor: "#fa233b",
-              fill: false,
-              tension: 0,
-              borderWidth: 2.5,
-              pointRadius: 3,
-              pointHoverRadius: 5,
-              pointHitRadius: 10,
-              spanGaps: true
-            }
-          ]
+            { label: "SoundCloud", data: sc, color: "#FF4000" },
+            { label: "Spotify", data: sp, color: "#1DB954" },
+            { label: "Apple Music", data: am, color: "#fa233b" }
+          ].map((d) => ({
+            label: d.label,
+            data: d.data,
+            borderColor: d.color,
+            backgroundColor: d.color,
+            fill: false,
+            tension: 0,
+            borderWidth: 2.5,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            pointHitRadius: 10,
+            spanGaps: true
+          }))
         },
         options: {
           responsive: true,
@@ -376,7 +352,6 @@ const playlistFetchedAt = playlistsData.fetched_at
               title: { display: true, text: "Cumulative Plays (log scale)", color: pal.mut, font: { size: 14, weight: "bold" } }
             }
           },
-          elements: { line: { tension: 0, borderWidth: 2.5 }, point: { radius: 3, hitRadius: 10 } },
           animation: prefersReduced ? false : { duration: 1200, easing: "easeOutQuart" }
         }
       });
