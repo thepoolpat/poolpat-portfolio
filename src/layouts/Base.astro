@@ -20,7 +20,7 @@ const {
   structuredData,
 } = Astro.props;
 
-const siteUrl = import.meta.env.SITE ?? "https://thepoolpat.github.io";
+const siteUrl = import.meta.env.SITE;
 const canonical = `${siteUrl}${import.meta.env.BASE_URL}${(canonicalPath ?? "").replace(/^\//, "")}`;
 
 const footerAmHref = link({
