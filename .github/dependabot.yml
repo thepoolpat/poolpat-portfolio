@@ -8,6 +8,12 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    ignore:
+      # @astrojs/check (latest 0.9.9) peers on typescript ^5 || ^6; a TS 7 major
+      # bump breaks `npm ci` (ERESOLVE) and the Pages deploy. Hold at 6.x until
+      # the Astro check toolchain declares TS 7 support.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: "pip"
     directory: "/pipeline"
     schedule:
