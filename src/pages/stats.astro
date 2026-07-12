@@ -6,7 +6,7 @@ import playsRaw from "@data/plays.json";
 import historyRaw from "@data/history.csv?raw";
 import yearlyRaw from "@data/play_history_yearly.json";
 import { countries as geoCountries, cities as geoCities, combinedTotalPlays, countryCount } from "@/lib/geo";
-import { platformTotals, soundcloudEngagement } from "@/lib/totals";
+import { platformTotals } from "@/lib/totals";
 
 // Read at runtime, not via static import: Rollup resolves import specifiers
 // during `astro build`, so a missing playlists.json would fail the build
@@ -33,7 +33,6 @@ const spMonthly = data.spotify?.monthly_listeners || 0;
 // Per-track SoundCloud engagement + metadata (likes/reposts, artwork, permalink),
 // captured by the pipeline from the same v2 response as the play counts.
 const scDetails: Record<string, any> = data.soundcloud?.track_details || {};
-const scEng = soundcloudEngagement(data);
 // Guard against a malformed timestamp, not just a missing one — an Invalid
 // Date would render literally here and feed NaN x-values to the chart below.
 const lastUpdatedDate = new Date(data.last_updated ?? NaN);
@@ -194,9 +193,6 @@ const playlistFetchedAt = playlistsData.fetched_at
     <StatCard label="Apple Music" value={amTotal} color="var(--accent-am)" sub={`${data.apple_music?.total_shazams || 0} Shazams`} />
     {totalPlaylistReach > 0 && (
       <StatCard label="Playlist Reach" value={totalPlaylistReach} color="var(--accent-sp)" sub={`${playlists.length} playlists`} />
-    )}
-    {scEng.likes > 0 && (
-      <StatCard label="SoundCloud Likes" value={scEng.likes} color="var(--accent-sc)" sub={`${scEng.reposts} reposts · ${scEng.comments} comments`} />
     )}
   </div>
 
