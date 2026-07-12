@@ -8,7 +8,7 @@ interface Props {
   structuredData?: object;
 }
 const { title, description, ogImage, ogType = "website", canonicalUrl, structuredData } = Astro.props;
-const siteUrl = import.meta.env.SITE ?? "https://thepoolpat.github.io";
+const siteUrl = import.meta.env.SITE;
 const fullOgImage = ogImage?.startsWith("http") ? ogImage : `${siteUrl}${ogImage}`;
 ---
 <title>{title}</title>
