@@ -1,0 +1,86 @@
+name: Insights Autofetch (daily)
+
+# Fetches all-platform play totals from the logged-in SoundCloud Insights page
+# (server-rendered — plain GET with a session cookie, no browser) and opens a
+# data PR. Replaces the Mac-bound scheduled browser scrape.
+#
+# Needs the SC_COOKIE secret: the raw Cookie header of a logged-in
+# soundcloud.com session. When it expires this workflow fails (you get a
+# GitHub email); paste a fresh one with:  gh secret set SC_COOKIE
+
+on:
+  schedule:
+    - cron: "47 6 * * *"   # daily 06:47 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: insights-autofetch
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pipeline/requirements.txt
+
+      # No secrets in env here: a compromised dependency's install hooks
+      # must not see SC_COOKIE (it's a full logged-in session).
+      - name: Install dependencies
+        run: pip install -r pipeline/requirements.txt
+
+      - name: Fetch insights
+        env:
+          SC_COOKIE: ${{ secrets.SC_COOKIE }}
+        run: python pipeline/fetch_insights.py
+
+      - name: Open data PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git diff --quiet -- data/insights.json data/plays.json; then
+            echo "no data changes — nothing to ship"
+            exit 0
+          fi
+          TODAY="$(date -u +%Y-%m-%d)"
+          BRANCH="data/insights-$TODAY"
+          TITLE="data: insights auto-update $TODAY (SfA All Platforms)"
+          if git ls-remote --exit-code origin "refs/heads/$BRANCH" >/dev/null 2>&1; then
+            # Branch without an open PR = a previous run died between push and
+            # PR creation; recover by opening the PR instead of silently green-exiting.
+            if [ -n "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
+              echo "PR for $BRANCH already open — skipping"
+              exit 0
+            fi
+            echo "branch $BRANCH exists without an open PR — creating one"
+            gh pr create --base main --head "$BRANCH" --title "$TITLE" \
+              --body "Automated SoundCloud Insights fetch (recovered: previous run pushed this branch but failed before opening the PR)."
+            exit 0
+          fi
+          # Never commit a file that doesn't parse — a truncated plays.json on
+          # main would poison the next run's monotonic baseline.
+          python -c 'import json; [json.load(open(p)) for p in ("data/insights.json", "data/plays.json")]'
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add data/insights.json data/plays.json
+          git commit -m "data: insights auto-update $TODAY (SfA All Platforms)"
+          git push -u origin "$BRANCH"
+          # Note: GITHUB_TOKEN-created PRs don't trigger tests.yml (GitHub
+          # blocks recursive workflow runs). Acceptable for a two-file data
+          # diff; the JSON parse check above is the real gate.
+          gh pr create --base main \
+            --title "$TITLE" \
+            --body "$(printf 'Automated SoundCloud Insights fetch (All Platforms / All Time).\n\n```\n%s\n```' "$(git diff main -- data/insights.json)")"
