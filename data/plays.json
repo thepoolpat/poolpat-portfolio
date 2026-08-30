@@ -1,6 +1,6 @@
 {
   "artist": "Poolpat",
-  "last_updated": "2026-08-23T06:49:26.244893+00:00",
+  "last_updated": "2026-08-30T11:37:49.511259+00:00",
   "soundcloud": {
     "url": "https://soundcloud.com/poolpat",
     "tracks": {
@@ -14,14 +14,14 @@
       "Interlude De Bat%rd": 809,
       "The Kraken X Otaku Black X Jimmy Cena Scratch By JusMe": 773,
       "Ooh La La La!": 774,
-      "Sephiroth": 827,
-      "Folks Now!": 244,
+      "Sephiroth": 828,
+      "Folks Now!": 245,
       "Minnie": 250,
-      "Flat Monkey Beat": 167,
+      "Flat Monkey Beat": 168,
       "Keep the Fire Burning (Remix)": 363,
       "Get lucky Technologic Bootleg": 221,
-      "Tech Mix 124-134BPM": 47,
-      "O'sho II": 21,
+      "Tech Mix 124-134BPM": 48,
+      "O'sho II": 22,
       "Midtown Winter Lofi": 162,
       "P.S. (Waves Rework, Ft. Farid Williams, King of Hearts)": 469,
       "Ça Me Saoule": 756,
@@ -42,7 +42,7 @@
       "Collective Suicide (Ft. Otaku Black)": 764,
       "Déjà 30 Piges (feat. Djar One & Jaws) [Remix]": 1355,
       "O'sho | Drogba [x] Poolpat [=] Danilo Milk [~]": 0,
-      "Seven Nation Army": 172,
+      "Seven Nation Army": 173,
       "Cara mo bhean chéile": 149
     },
     "track_details": {
@@ -400,7 +400,7 @@
     "total_tracks": 47,
     "followers": 130,
     "fetch_status": "success",
-    "last_successful_fetch": "2026-08-23T06:49:27.536433+00:00",
+    "last_successful_fetch": "2026-08-30T11:37:50.357106+00:00",
     "total_streams_sc": 18635,
     "total_downloads": 3690,
     "source": "SoundCloud Insights (All Platforms, All Time, 2016-Present)"
