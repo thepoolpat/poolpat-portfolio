@@ -1,9 +1,9 @@
 {
-  "fetched_at": "2026-08-22T19:54:21+00:00",
-  "source": "https://soundcloud.com/you/insights?timewindow=ALL_TIME&resolution=YEAR&insightsTab=ALL_PLATFORMS",
+  "fetched_at": "2026-09-10T17:42:31+00:00",
+  "source": "https://soundcloud.com/you/insights/distributed?timewindow=ALL_TIME&resolution=YEAR",
   "method": "browser scrape (logged-in SoundCloud Insights, All Platforms / All Time)",
-  "total_plays": 53762,
-  "soundcloud_plays": 28652,
-  "spotify_plays": 20936,
-  "apple_music_plays": 4174
+  "total_plays": 54103,
+  "soundcloud_plays": 28663,
+  "spotify_plays": 21260,
+  "apple_music_plays": 4180
 }
