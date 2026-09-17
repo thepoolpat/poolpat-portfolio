@@ -435,20 +435,13 @@ const playlistFetchedAt = playlistsData.fetched_at
         {sec.tracks.slice(0, 5).map(([title, plays], i) => {
           const d = sec.details?.[title];
           const href = d ? trackHref(d) : null;
-          const eng = d && ((d.likes || 0) > 0 || (d.reposts || 0) > 0)
-            ? `${(d.likes || 0).toLocaleString("en-IE")} likes · ${(d.reposts || 0).toLocaleString("en-IE")} reposts`
-            : null;
           return (
             <li class="track">
               <span class="track-num">{i + 1}</span>
-              {d?.artwork_url && (
-                <img class="track-art" src={d.artwork_url} width="40" height="40" loading="lazy" decoding="async" alt="" />
-              )}
               <span class="track-title">
                 {href
                   ? <a href={href} target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:none">{title}</a>
                   : title}
-                {eng && <span class="track-eng">{eng}</span>}
               </span>
               <span class="track-duration" style={`color:${sec.color}`}>{plays.toLocaleString("en-IE")}</span>
             </li>
