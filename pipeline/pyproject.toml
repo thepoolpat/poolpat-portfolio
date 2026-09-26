@@ -6,7 +6,7 @@ requires-python = ">=3.10"
 dependencies = [
     "requests==2.34.2",
     "beautifulsoup4==4.15.0",
-    "PyJWT[crypto]==2.13.0",
+    "PyJWT[crypto]==2.14.0",
     "defusedxml==0.7.1",
 ]
 
