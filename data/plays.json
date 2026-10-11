@@ -1,6 +1,6 @@
 {
   "artist": "Poolpat",
-  "last_updated": "2026-10-04T12:04:23.415383+00:00",
+  "last_updated": "2026-10-11T12:26:30.493210+00:00",
   "soundcloud": {
     "url": "https://soundcloud.com/poolpat",
     "tracks": {
@@ -398,9 +398,9 @@
     },
     "total_plays": 28666,
     "total_tracks": 47,
-    "followers": 131,
+    "followers": 130,
     "fetch_status": "success",
-    "last_successful_fetch": "2026-10-04T12:04:26.646034+00:00",
+    "last_successful_fetch": "2026-10-11T12:26:31.551403+00:00",
     "total_streams_sc": 18635,
     "total_downloads": 3690,
     "source": "SoundCloud Insights (All Platforms, All Time, 2016-Present)"
