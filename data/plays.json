@@ -1,6 +1,6 @@
 {
   "artist": "Poolpat",
-  "last_updated": "2026-10-25T11:02:25.625563+00:00",
+  "last_updated": "2026-11-01T12:57:24.156764+00:00",
   "soundcloud": {
     "url": "https://soundcloud.com/poolpat",
     "tracks": {
@@ -22,16 +22,16 @@
       "Get lucky Technologic Bootleg": 221,
       "Tech Mix 124-134BPM": 48,
       "O'sho II": 22,
-      "Midtown Winter Lofi": 162,
+      "Midtown Winter Lofi": 163,
       "P.S. (Waves Rework, Ft. Farid Williams, King of Hearts)": 469,
       "Ça Me Saoule": 756,
       "Interlude": 259,
-      "Trauma": 234,
+      "Trauma": 236,
       "Crazy - Cover": 270,
       "Cara Mo Bhean Chéile - Freestyle": 262,
       "Come Together - Freestyle": 249,
       "Wanna Be Seen Ft Bubba Shakespeare, Emi, Jaws, Poolpat": 270,
-      "Otaku's Doodle": 372,
+      "Otaku's Doodle": 373,
       "The Moocher": 194,
       "Teacht le chéile": 22,
       "Schneck De Traître X L.Stoch": 775,
@@ -42,7 +42,7 @@
       "Collective Suicide (Ft. Otaku Black)": 764,
       "Déjà 30 Piges (feat. Djar One & Jaws) [Remix]": 1355,
       "O'sho | Drogba [x] Poolpat [=] Danilo Milk [~]": 0,
-      "Seven Nation Army": 176,
+      "Seven Nation Army": 177,
       "Cara mo bhean chéile": 149
     },
     "track_details": {
@@ -372,7 +372,7 @@
       "Seven Nation Army": {
         "likes": 6,
         "reposts": 0,
-        "comments": 2,
+        "comments": 3,
         "downloads": 0,
         "permalink_url": "https://soundcloud.com/poolpat/seven-nation-army",
         "artwork_url": "https://i1.sndcdn.com/artworks-6VIdOFdJpom8vOm6-ZGdVyA-large.jpg",
@@ -393,14 +393,14 @@
     "engagement": {
       "likes": 145,
       "reposts": 18,
-      "comments": 16,
+      "comments": 17,
       "downloads": 0
     },
     "total_plays": 28666,
     "total_tracks": 47,
     "followers": 131,
     "fetch_status": "success",
-    "last_successful_fetch": "2026-10-25T11:02:26.684626+00:00",
+    "last_successful_fetch": "2026-11-01T12:57:24.954523+00:00",
     "total_streams_sc": 18635,
     "total_downloads": 3690,
     "source": "SoundCloud Insights (All Platforms, All Time, 2016-Present)"
